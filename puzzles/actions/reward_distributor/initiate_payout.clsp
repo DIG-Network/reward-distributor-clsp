@@ -43,7 +43,7 @@
     )
 
     (if (all
-        (= 
+        (=
             (* (- cumulative_payout entry_initial_cumulative_payout) entry_shares)
             (+ (* entry_payout_amount PRECISION) payout_rounding_error)
         )

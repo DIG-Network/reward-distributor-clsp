@@ -20,7 +20,7 @@
     (include curry.clib)
 
     (c
-        cat_shares
+        cat_shares ; unlocked_shares
         (list
             ; remove entry
             (list SEND_MESSAGE
@@ -56,6 +56,6 @@
                 (list 'u' cat_parent_id) ; message
                 Entry_Custody_Puzzle_Hash ; sender
             )
-        )
+        ) ; output_conditions
     )
 )

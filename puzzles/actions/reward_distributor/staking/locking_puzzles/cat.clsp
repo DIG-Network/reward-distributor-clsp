@@ -1,0 +1,64 @@
+; cat.clsp by yakuhito
+;; Allows a certain CAT to be staked. Share number is equal to the number of CATs.
+
+;; This is a staking puzzle - output is (new_active_shares . output_conditions).
+;; Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+(mod (
+    CAT_MAKER
+    OFFER_MOD_HASH
+    NONCE_MOD_HASH
+    MY_P2_PUZZLE_HASH
+    Ephemeral_State
+    Entry_Custody_Puzzle_Hash
+    my_id
+    cat_amount .
+    cat_maker_solution_rest
+)
+    (include condition_codes.clib)
+    (include sha256tree.clib)
+    (include curry.clib)
+
+    (defun notarized_payment (ph)
+        (list ph 1 (list ph))
+    )
+
+    (defun add_announcement_assert_and_create_security_condition (ann conditions)
+        (c
+            (list ASSERT_PUZZLE_ANNOUNCEMENT ann)
+            (c
+                (list CREATE_PUZZLE_ANNOUNCEMENT ann)
+                conditions
+            )
+        )
+    )
+
+    (c
+        cat_amount ; new_active_shares
+        (add_announcement_assert_and_create_security_condition
+            (sha256
+                (a
+                    CAT_MAKER
+                    (c
+                        OFFER_MOD_HASH ; Inner_Puzzle_hash
+                        cat_maker_solution_rest
+                    )
+                ) ; CAT full puzzle hash
+                (sha256tree 
+                    (list
+                        (sha256tree (c Ephemeral_State my_id)) ; nonce
+                        (notarized_payment (curry_hashes NONCE_MOD_HASH
+                            (sha256tree
+                                (c Entry_Custody_Puzzle_Hash cat_amount)
+                            )
+                            MY_P2_PUZZLE_HASH
+                        ))
+                    )
+                )
+            )
+            (list
+                (list ASSERT_MY_COIN_ID my_id)
+            )
+        ) ; locking conditions
+    )
+)

@@ -1,0 +1,123 @@
+; stake.clsp by yakuhito
+;; Stakes some assets to receive active shares in return. Locking logic is
+;;   enforced by a STAKING_PUZZLE, which is provided at distributor launch
+;;   based on its desired behavior (e.g., NFT distributor)
+
+;; Note: New entries may optionally be consolidated into one slot. To do that,
+;;   the old slot's cumulative payout will need to 'catch up' to the current
+;;   cumulative_payout. It's expected that the custody puzzle will trigger a
+;;   payout (if possible) and then only give up rewards with an amount lower than
+;;   the minimum payout. To prevent malicious actors from using this behavior,
+;;   consolidating an existing slot requires the custody puzzle hash to send
+;;   a message to the distributor with the difference it gives up (with
+;;   mojos * PRECISION as unit). The freed rewards will be distributed to
+;;   all stakers later (they're moved to remaining_rewards).
+
+(mod (
+    ENTRY_SLOT_1ST_CURRY_HASH ; after 1st curry
+    MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
+    ; /\ this prevents someone from 'stealing' earned rewards before MAX_SECONDS_OFFSET by
+    ;    staking a bunch of NFTs after long periods of non-sync
+    STAKING_PUZZLE ; the puzzle used to enforce asset locking (CAT/NFTs)
+    (
+        Ephemeral_State .
+        Current_State
+    ) ; Truth
+    (
+        staking_puzzle_solution . 
+        (@ existing_slot_value (
+            entry_custody_puzzle_hash 
+            existing_slot_cumulative_payout . ; -1 if slot doesn't exist 
+            existing_slot_shares ; 0 if slot doesn't exist
+        ))
+    )
+)
+    (include condition_codes.clib)
+    (include sha256tree.clib)
+    (include curry.clib)
+    (include slots.clib)
+
+    (defun main (
+        (@
+            Current_State
+            (
+                total_reserves
+                active_shares
+                (@ Reward_Info (cumulative_payout . remaining_rewards))
+                (@ Round_Time_Info (last_update . epoch_end))
+            )
+        )
+        (@ existing_slot_value (
+            entry_custody_puzzle_hash
+            existing_slot_cumulative_payout .
+            existing_slot_shares
+        ))
+        (newly_staked_shares . staking_conditions)
+    )
+        (c
+            (list
+                (+ Ephemeral_State 1)
+                total_reserves
+                (+ active_shares newly_staked_shares)
+                (c
+                    cumulative_payout
+                    (+
+                        remaining_rewards
+                        ; if there is no existing slot being used, existing_slot_shares is enforced to be 0
+                        (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                    )
+                )
+                Round_Time_Info
+            ) ; new state
+            (c
+                ; create new slot
+                (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
+                    (sha256tree
+                        (c 
+                            entry_custody_puzzle_hash
+                            (c
+                                cumulative_payout
+                                (+ existing_slot_shares newly_staked_shares)
+                            )
+                        )
+                    ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                    entry_custody_puzzle_hash
+                )
+                (c
+                    ; make sure the reward info is up to date
+                    (list ASSERT_BEFORE_SECONDS_ABSOLUTE (+ last_update MAX_SECONDS_OFFSET))
+                    (c
+                        (if (> existing_slot_cumulative_payout -1)
+                            (c
+                                ; receive message that giving up rewards is ok
+                                (list
+                                    RECEIVE_MESSAGE
+                                    18 ; puzzle-puzzle
+                                    (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                                    entry_custody_puzzle_hash
+                                )
+                                (c
+                                    ; spend current slot
+                                    (spend_slot ENTRY_SLOT_1ST_CURRY_HASH (sha256tree existing_slot_value))
+                                    staking_conditions
+                                )
+                            )
+                            ; else
+                            (if (not existing_slot_shares)
+                                staking_conditions
+                                ; else
+                                (x)
+                            )
+                        )
+                    )
+                )
+            ) ; conditions
+        )
+    )
+
+    (main
+        Current_State
+        existing_slot_value
+        (a STAKING_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash staking_puzzle_solution)))
+    )
+)

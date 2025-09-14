@@ -68,7 +68,7 @@
             ; make sure the clawback owner wants to go ahead
             (list RECEIVE_MESSAGE
                 18 ; puzzle hash - puzzle hash
-                () ; message
+                (list 'w' reward_slot_epoch_time committed_value) ; message
                 clawback_ph
             )
 

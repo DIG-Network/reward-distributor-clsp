@@ -19,10 +19,10 @@
     ; /\ this prevents someone from 'stealing' earned rewards before MAX_SECONDS_OFFSET by
     ;    staking a bunch of NFTs after long periods of non-sync
     STAKING_PUZZLE ; the puzzle used to enforce asset locking (CAT/NFTs)
-    (
+    (@ State_Truth (
         Ephemeral_State .
         Current_State
-    ) ; Truth
+    )) ; Truth
     (
         staking_puzzle_solution . 
         (@ existing_slot_value (
@@ -38,13 +38,18 @@
     (include slots.clib)
 
     (defun main (
-        (@
-            Current_State
-            (
-                total_reserves
-                active_shares
-                (@ Reward_Info (cumulative_payout . remaining_rewards))
-                (@ Round_Time_Info (last_update . epoch_end))
+        ENTRY_SLOT_1ST_CURRY_HASH
+        MAX_SECONDS_OFFSET
+        (
+            Ephemeral_State .
+            (@
+                Current_State
+                (
+                    total_reserves
+                    active_shares
+                    (@ Reward_Info (cumulative_payout . remaining_rewards))
+                    (@ Round_Time_Info (last_update . epoch_end))
+                )
             )
         )
         (@ existing_slot_value (
@@ -93,7 +98,7 @@
                                 (list
                                     RECEIVE_MESSAGE
                                     18 ; puzzle-puzzle
-                                    (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                                    (list 's' (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout)))
                                     entry_custody_puzzle_hash
                                 )
                                 (c
@@ -116,7 +121,9 @@
     )
 
     (main
-        Current_State
+        ENTRY_SLOT_1ST_CURRY_HASH
+        MAX_SECONDS_OFFSET
+        State_Truth
         existing_slot_value
         (a STAKING_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash staking_puzzle_solution)))
     )

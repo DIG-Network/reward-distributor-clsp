@@ -6,6 +6,7 @@
     FEE_PAYOUT_PUZZLE_HASH
     FEE_BPS ; * epoch_total_rewards / 10000 will be given to the validator - rest is distributed to mirrors
     EPOCH_SECONDS
+    PRECISION
     (
         Ephemeral_State . ; not used
         (@ Current_State
@@ -50,7 +51,7 @@
                 active_shares
                 (c
                     cumulative_payout
-                    (+ remaining_rewards (- epoch_total_rewards fee))
+                    (+ remaining_rewards (* (- epoch_total_rewards fee) PRECISION))
                 )
                 (c epoch_end (+ epoch_end EPOCH_SECONDS))
             ) ; new state 

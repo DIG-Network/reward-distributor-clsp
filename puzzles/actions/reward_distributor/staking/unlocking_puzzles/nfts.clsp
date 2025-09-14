@@ -1,135 +1,114 @@
 ; nfts.clsp by yakuhito
 ;; Sends a given set of staked NFTs back to the user.
 
-;; This is an ublocking puzzle - output is (unlocked_shares . output_conditions).
+;; This is an unlocking puzzle - output is (unlocked_shares . output_conditions).
 ;; Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
-(mod (
+(mod (@ curried_args_and_solution (
     SINGLETON_MOD_HASH
     SINGLETON_LAUNCHER_HASH
     NFT_STATE_LAYER_MOD_HASH
     NFT_OWNERSHIP_LAYER_MOD_HASH
     NONCE_MOD_HASH
     MY_P2_PUZZLE_HASH
-    ENTRY_SLOT_1ST_CURRY_HASH ; after 1st curry
-    MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
-    ; /\ this prevents the reward distributor from 'stealing' earned rewards while not
-    ;    dropping the remove mirror tx from the mempool after each block
-    PRECISION
-    (
-        Ephemeral_State . ; not used
-        (@
-            Current_State
-            (
-                total_reserves
-                active_shares
-                (@ Reward_Info (cumulative_payout . remaining_rewards))
-                (@ Round_Time_Info (last_update . epoch_end))
-            )
-        )
-    ) ; Truth
-    (
-        nft_launcher_id
-        nft_parent_id
-        nft_metadata_hash
-        nft_metadata_updater_hash_hash
-        nft_transfer_porgram_hash
-        entry_payout_amount
-        payout_rounding_error 
-        entry_initial_cumulative_payout .
-        entry_custody_puzzle_hash
-    )
-)
+    Ephemeral_State
+    Entry_Custody_Puzzle_Hash .
+    nfts_to_unlock
+))
     (include condition_codes.clib)
     (include sha256tree.clib)
     (include curry.clib)
-    (include slots.clib)
 
-    (if (all
-        (=
-            (- cumulative_payout entry_initial_cumulative_payout)
-            (+ (* entry_payout_amount PRECISION) payout_rounding_error)
-        )
-        (> payout_rounding_error -1)
-        (> PRECISION payout_rounding_error)
+    (defun remove_nfts (
+        (@ curried_args_and_solution (
+            SINGLETON_MOD_HASH
+            SINGLETON_LAUNCHER_HASH
+            NFT_STATE_LAYER_MOD_HASH
+            NFT_OWNERSHIP_LAYER_MOD_HASH
+            NONCE_MOD_HASH
+            MY_P2_PUZZLE_HASH
+            Ephemeral_State
+            Entry_Custody_Puzzle_Hash
+            ; nfts_to_unlock - not used
+        ))
+        (@ nfts_to_unlock (
+            (
+                nft_launcher_id
+                nft_parent_id
+                nft_metadata_hash
+                nft_metadata_updater_hash_hash
+                nft_owner_hash
+                nft_transfer_porgram_hash .
+                nft_shares
+            ) . remaining_nfts_to_unlock
+        ))
+        shares_so_far
+        conditions_so_far
     )
-        (c
-            (c
-                Ephemeral_State ; new ephemeral state
-                (list
-                    (- total_reserves entry_payout_amount)
-                    (- active_shares 1)
-                    (c cumulative_payout (+ remaining_rewards payout_rounding_error))
-                    Round_Time_Info
-                ) ; new state
-            )
-            (list
-                ; remove entry
-                (list SEND_MESSAGE
-                    23 ; sender puzzle hash, receiver coin id
-                    (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
-                        1 
-                        (list
+        (if remaining_nfts_to_unlock
+            (remove_nfts
+                curried_args_and_solution
+                remaining_nfts_to_unlock
+                (+ shares_so_far nft_shares)
+                (c
+                    ; remove entry
+                    (list SEND_MESSAGE
+                        23 ; sender puzzle hash, receiver coin id
+                        (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
+                            1 
                             (list
-                                CREATE_COIN
-                                entry_custody_puzzle_hash
-                                1
-                                (list entry_custody_puzzle_hash)
-                            )
-                        )
-                    )) ; message = delegated puzzle hash
-                    (coinid
-                        nft_parent_id
-                        (curry_hashes SINGLETON_MOD_HASH
-                            (sha256tree
-                                (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
-                            )
-                            (curry_hashes NFT_STATE_LAYER_MOD_HASH
-                                (sha256 1 NFT_STATE_LAYER_MOD_HASH)
-                                nft_metadata_hash
-                                nft_metadata_updater_hash_hash  
-                                (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
-                                    (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
-                                    (sha256_one)
-                                    nft_transfer_porgram_hash
-                                    (curry_hashes NONCE_MOD_HASH
-                                        (sha256 1 entry_custody_puzzle_hash)
-                                        MY_P2_PUZZLE_HASH
-                                    )
+                                (list
+                                    CREATE_COIN
+                                    Entry_Custody_Puzzle_Hash
+                                    1
+                                    (list Entry_Custody_Puzzle_Hash)
                                 )
                             )
-                        ) ; NFT puzzle hash
-                        1
+                        )) ; message = delegated puzzle hash
+                        (coinid
+                            nft_parent_id
+                            (curry_hashes SINGLETON_MOD_HASH
+                                (sha256tree
+                                    (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
+                                )
+                                (curry_hashes NFT_STATE_LAYER_MOD_HASH
+                                    (sha256 1 NFT_STATE_LAYER_MOD_HASH)
+                                    nft_metadata_hash
+                                    nft_metadata_updater_hash_hash  
+                                    (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
+                                        (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
+                                        nft_owner_hash
+                                        nft_transfer_porgram_hash
+                                        (curry_hashes NONCE_MOD_HASH
+                                            (sha256tree (c Entry_Custody_Puzzle_Hash nft_shares))
+                                            MY_P2_PUZZLE_HASH
+                                        )
+                                    )
+                                )
+                            ) ; NFT puzzle hash
+                            1
+                        )
+                    )
+                    (c
+                        ; owner actually wants us to remove this entry
+                        (list RECEIVE_MESSAGE
+                            18 ; puzzle hash - puzzle hash
+                            (concat 'u' nft_launcher_id) ; message
+                            Entry_Custody_Puzzle_Hash ; sender
+                        )
+                        conditions_so_far
                     )
                 )
-
-                ; owner actually wants us to remove this entry
-                (list RECEIVE_MESSAGE
-                    18 ; puzzle hash - puzzle hash
-                    (list 'u' nft_launcher_id) ; message
-                    entry_custody_puzzle_hash ; sender
-                )
-
-                ; make sure the reward info is up to date
-                (list ASSERT_BEFORE_SECONDS_ABSOLUTE (+ last_update MAX_SECONDS_OFFSET))
-
-                ; spend entry reward slot without recreating it
-                (spend_slot ENTRY_SLOT_1ST_CURRY_HASH
-                    (sha256tree
-                        (c entry_custody_puzzle_hash (c entry_initial_cumulative_payout 1))
-                    ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
-                )
-
-                ; leading -42 -> condition will be returned by the reserve
-                (list -42
-                    CREATE_COIN
-                    entry_custody_puzzle_hash
-                    entry_payout_amount
-                    (list entry_custody_puzzle_hash)
-                )
-            ) ; conditions
+            )
+            ; else
+            (c shares_so_far conditions_so_far)
         )
-        ; else
-        (x)
+    )
+
+    (remove_nfts
+        curried_args_and_solution
+        nfts_to_unlock
+        0
+        ()
     )
 )

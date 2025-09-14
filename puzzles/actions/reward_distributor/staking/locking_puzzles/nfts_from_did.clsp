@@ -71,7 +71,7 @@
                 Ephemeral_State
                 Entry_Custody_Puzzle_Hash
                 my_id
-                nft_infos
+                ; nft_infos - not used
             ))
             (@
                 nft_infos
@@ -116,7 +116,9 @@
                             (list
                                 (sha256tree (c Ephemeral_State my_id)) ; nonce
                                 (notarized_payment (curry_hashes NONCE_MOD_HASH
-                                    (sha256 1 entry_custody_puzzle_hash)
+                                    (sha256tree
+                                        (c entry_custody_puzzle_hash 1) ; 1 share per NFT
+                                    )
                                     MY_P2_PUZZLE_HASH
                                 ))
                             )

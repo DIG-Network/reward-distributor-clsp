@@ -1,0 +1,7 @@
+; nfts.clsp by yakuhito
+;; Sends a given set of staked NFTs back to the user.
+
+;; This is an ublocking puzzle - output is (unlocked_shares . output_conditions).
+;; Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+; TODO

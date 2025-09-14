@@ -12,6 +12,7 @@
     MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
     ; /\ this prevents the reward distributor from 'stealing' earned rewards while not
     ;    dropping the remove mirror tx from the mempool after each block
+    PRECISION
     (
         Ephemeral_State . ; not used
         (@

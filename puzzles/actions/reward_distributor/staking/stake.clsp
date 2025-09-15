@@ -19,13 +19,13 @@
     MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
     ; /\ this prevents someone from 'stealing' earned rewards before MAX_SECONDS_OFFSET by
     ;    staking a bunch of NFTs after long periods of non-sync
-    LOCKING_PUZZLE ; the puzzle used to enforce asset locking (CAT/NFTs)
+    LOCK_PUZZLE ; the puzzle used to enforce asset locking (CAT/NFTs)
     (@ State_Truth (
         Ephemeral_State .
         Current_State
     )) ; Truth
     (
-        locking_puzzle_solution . 
+        lock_puzzle_solution .
         (@ existing_slot_value (
             entry_custody_puzzle_hash 
             existing_slot_cumulative_payout . ; -1 if slot doesn't exist 
@@ -126,6 +126,6 @@
         MAX_SECONDS_OFFSET
         State_Truth
         existing_slot_value
-        (a LOCKING_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash locking_puzzle_solution)))
+        (a LOCK_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash lock_puzzle_solution)))
     )
 )

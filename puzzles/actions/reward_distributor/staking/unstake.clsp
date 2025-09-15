@@ -10,7 +10,7 @@
     ; /\ this prevents the reward distributor from 'stealing' earned rewards while not
     ;    dropping the remove mirror tx from the mempool after each block
     PRECISION
-    UNLOCK_PROGRAM
+    UNLOCK_PUZZLE
     (
         Ephemeral_State .
         (@
@@ -24,7 +24,7 @@
         )
     ) ; Truth
     (
-        locking_puzzle_solution
+        unlock_puzzle_solution
         entry_payout_amount
         payout_rounding_error 
         ; entry slot data
@@ -43,7 +43,7 @@
             ENTRY_SLOT_1ST_CURRY_HASH
             MAX_SECONDS_OFFSET
             PRECISION
-            UNLOCK_PROGRAM
+            UNLOCK_PUZZLE
             (
                 Ephemeral_State .
                 (@
@@ -57,7 +57,7 @@
                 )
             ) 
             (
-                locking_puzzle_solution
+                unlock_puzzle_solution
                 entry_payout_amount
                 payout_rounding_error 
                 (@ entry_slot_data (
@@ -136,6 +136,6 @@
 
     (main
         curried_args_and_solution
-        (a LOCKING_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash locking_puzzle_solution)))
+        (a UNLOCK_PUZZLE (c Ephemeral_State (c entry_custody_puzzle_hash unlock_puzzle_solution)))
     )
 )

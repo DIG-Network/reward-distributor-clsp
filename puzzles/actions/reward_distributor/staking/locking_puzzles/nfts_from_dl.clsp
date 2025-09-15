@@ -63,7 +63,7 @@
                         nft_launcher_id
                         nft_metadata_hash
                         nft_metadata_updater_hash_hash 
-                        nft_owner_hash
+                        nft_owner
                         nft_transfer_porgram_hash
                         nft_shares .
                         nft_inclusion_proof
@@ -91,7 +91,7 @@
                                 nft_metadata_updater_hash_hash  
                                 (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
                                     (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
-                                    nft_owner_hash
+                                    (sha256 1 nft_owner)
                                     nft_transfer_porgram_hash
                                     OFFER_MOD_HASH
                                 )

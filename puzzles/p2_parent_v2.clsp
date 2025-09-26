@@ -1,0 +1,28 @@
+; p2_parent_v2.clsp by yakuhito
+;; Coins locked with this custody inner puzzle run the same
+;;   delegated puzzle hash as their parent.
+
+(mod
+    (
+        CAT_MAKER
+        parent_parent_id
+        parent_amount
+        parent_inner_puzzle
+        parent_solution .
+        cat_maker_solution
+    )
+
+    (include condition_codes.clib)
+    (include sha256tree.clib)
+
+    (c
+        (list ASSERT_MY_PARENT_ID
+            (coinid
+                parent_parent_id
+                (a CAT_MAKER (c (sha256tree parent_inner_puzzle) cat_maker_solution))
+                parent_amount
+            )
+        )
+        (a parent_inner_puzzle parent_solution)
+    )
+)

@@ -16,7 +16,7 @@
     my_id
     nft_infos
     dl_root_hash
-    dl_metadata_rest
+    dl_metadata_rest_hash_or_null
     dl_metadata_updater_hash_hash .
     dl_inner_puzzle_hash
 ))
@@ -52,7 +52,7 @@
                 my_id
                 initial_nft_infos
                 dl_root_hash
-                dl_metadata_rest
+                dl_metadata_rest_hash_or_null
                 dl_metadata_updater_hash_hash .
                 dl_inner_puzzle_hash
             ))
@@ -131,8 +131,9 @@
                             (sha256tree DL_SINGLETON_STRUCT)
                             (curry_hashes NFT_STATE_LAYER_MOD_HASH
                                 (sha256 1 NFT_STATE_LAYER_MOD_HASH)
-                                (sha256tree
-                                    (i dl_metadata_rest (c dl_root_hash dl_metadata_rest) dl_root_hash)
+                                (i dl_metadata_rest_hash_or_null
+                                    (sha256 2 (sha256 1 dl_root_hash) dl_metadata_rest_hash_or_null)
+                                    (sha256 1 dl_root_hash)
                                 )
                                 dl_metadata_updater_hash_hash  
                                 dl_inner_puzzle_hash

@@ -19,43 +19,47 @@
     (include sha256tree.clib)
     (include curry.clib)
 
-    (c
-        cat_shares ; unlocked_shares
-        (list
-            ; remove entry
-            (list SEND_MESSAGE
-                23 ; sender puzzle hash, receiver coin id
-                (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
-                    1 
-                    (list
+    (if Ephemeral_State
+        (x)
+        ; else
+        (c
+            cat_shares ; unlocked_shares
+            (list
+                ; remove entry
+                (list SEND_MESSAGE
+                    23 ; sender puzzle hash, receiver coin id
+                    (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
+                        1 
                         (list
-                            CREATE_COIN
-                            Entry_Custody_Puzzle_Hash
-                            cat_amount
-                            (list Entry_Custody_Puzzle_Hash)
+                            (list
+                                CREATE_COIN
+                                Entry_Custody_Puzzle_Hash
+                                cat_amount
+                                (list Entry_Custody_Puzzle_Hash)
+                            )
                         )
+                    )) ; message = delegated puzzle hash
+                    (coinid
+                        cat_parent_id
+                        (a
+                            CAT_MAKER
+                            (c
+                                (curry_hashes NONCE_MOD_HASH
+                                    (sha256tree (c Entry_Custody_Puzzle_Hash cat_shares))
+                                    MY_P2_PUZZLE_HASH
+                                ) ; Inner_Puzzle_Hash
+                                cat_maker_solution_rest
+                            ) ; CAT maker solution
+                        ) ; full CAT puzzle hash
+                        cat_amount
                     )
-                )) ; message = delegated puzzle hash
-                (coinid
-                    cat_parent_id
-                    (a
-                        CAT_MAKER
-                        (c
-                            (curry_hashes NONCE_MOD_HASH
-                                (sha256tree (c Entry_Custody_Puzzle_Hash cat_shares))
-                                MY_P2_PUZZLE_HASH
-                            ) ; Inner_Puzzle_Hash
-                            cat_maker_solution_rest
-                        ) ; CAT maker solution
-                    ) ; full CAT puzzle hash
-                    cat_amount
                 )
-            )
-            (list RECEIVE_MESSAGE
-                18 ; puzzle hash - puzzle hash
-                (list 'u' cat_parent_id) ; message
-                Entry_Custody_Puzzle_Hash ; sender
-            )
-        ) ; output_conditions
+                (list RECEIVE_MESSAGE
+                    18 ; puzzle hash - puzzle hash
+                    (list 'u' cat_parent_id) ; message
+                    Entry_Custody_Puzzle_Hash ; sender
+                )
+            ) ; output_conditions
+        )
     )
 )

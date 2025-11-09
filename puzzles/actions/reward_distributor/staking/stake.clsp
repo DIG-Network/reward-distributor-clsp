@@ -38,6 +38,25 @@
     (include curry.clib)
     (include slots.clib)
 
+    (defun create_slot_and_announce (
+        ENTRY_SLOT_1ST_CURRY_HASH
+        slot_value_hash
+        entry_custody_puzzle_hash
+        other_conds
+    )
+        (c
+            ; create new slot
+            (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
+                slot_value_hash
+                entry_custody_puzzle_hash
+            )
+            (c
+                (list CREATE_PUZZLE_ANNOUNCEMENT (concat 't' slot_value_hash))
+                other_conds
+            )
+        )
+    )
+
     (defun main (
         ENTRY_SLOT_1ST_CURRY_HASH
         MAX_SECONDS_OFFSET
@@ -75,20 +94,18 @@
                 )
                 Round_Time_Info
             ) ; new state
-            (c
-                ; create new slot
-                (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
-                    (sha256tree
-                        (c 
-                            entry_custody_puzzle_hash
-                            (c
-                                cumulative_payout
-                                (+ existing_slot_shares newly_locked_shares)
-                            )
+            (create_slot_and_announce
+                ENTRY_SLOT_1ST_CURRY_HASH
+                (sha256tree
+                    (c 
+                        entry_custody_puzzle_hash
+                        (c
+                            cumulative_payout
+                            (+ existing_slot_shares newly_locked_shares)
                         )
-                    ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
-                    entry_custody_puzzle_hash
-                )
+                    )
+                ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                entry_custody_puzzle_hash
                 (c
                     ; make sure the reward info is up to date
                     (list ASSERT_BEFORE_SECONDS_ABSOLUTE (+ last_update MAX_SECONDS_OFFSET))
@@ -99,7 +116,7 @@
                                 (list
                                     RECEIVE_MESSAGE
                                     18 ; puzzle-puzzle
-                                    (list 's' (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout)))
+                                    (concat 's' (sha256 1 (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))))
                                     entry_custody_puzzle_hash
                                 )
                                 (c

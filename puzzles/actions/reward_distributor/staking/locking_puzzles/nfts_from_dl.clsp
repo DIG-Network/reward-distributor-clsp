@@ -99,7 +99,7 @@
                         ) ; NFT puzzle hash
                         (sha256tree 
                             (list
-                                (sha256tree (c Ephemeral_State my_id)) ; nonce
+                                (sha256tree (c shares_so_far (c Ephemeral_State my_id))) ; nonce
                                 (notarized_payment (curry_hashes NONCE_MOD_HASH
                                     (sha256tree
                                         (c Entry_Custody_Puzzle_Hash nft_shares)

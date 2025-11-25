@@ -112,7 +112,7 @@
                     (if (= 
                         dl_root_hash
                         (simplify_merkle_proof
-                            (sha256tree (c Entry_Custody_Puzzle_Hash nft_shares))
+                            (sha256tree (c nft_launcher_id nft_shares))
                             nft_inclusion_proof
                         )
                     )

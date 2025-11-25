@@ -59,7 +59,7 @@
             (
                 unlock_puzzle_solution
                 entry_payout_amount
-                payout_rounding_error 
+                payout_rounding_error .
                 (@ entry_slot_data (
                     entry_custody_puzzle_hash
                     entry_initial_cumulative_payout .

@@ -28,9 +28,9 @@
         entry_payout_amount
         payout_rounding_error 
         ; entry slot data
-        entry_shares
-        entry_initial_cumulative_payout .
         entry_custody_puzzle_hash
+        entry_initial_cumulative_payout .
+        entry_shares
     )
 ))
     (include condition_codes.clib)

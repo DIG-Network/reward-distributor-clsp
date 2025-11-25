@@ -109,28 +109,26 @@
                 (c
                     ; make sure the reward info is up to date
                     (list ASSERT_BEFORE_SECONDS_ABSOLUTE (+ last_update MAX_SECONDS_OFFSET))
-                    (c
-                        (if (> existing_slot_cumulative_payout -1)
+                    (if (> existing_slot_cumulative_payout -1)
+                        (c
+                            ; receive message that giving up rewards is ok
+                            (list
+                                RECEIVE_MESSAGE
+                                18 ; puzzle-puzzle
+                                (concat 's' (sha256 1 (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))))
+                                entry_custody_puzzle_hash
+                            )
                             (c
-                                ; receive message that giving up rewards is ok
-                                (list
-                                    RECEIVE_MESSAGE
-                                    18 ; puzzle-puzzle
-                                    (concat 's' (sha256 1 (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))))
-                                    entry_custody_puzzle_hash
-                                )
-                                (c
-                                    ; spend current slot
-                                    (spend_slot ENTRY_SLOT_1ST_CURRY_HASH (sha256tree existing_slot_value))
-                                    locking_conditions
-                                )
-                            )
-                            ; else
-                            (if (not existing_slot_shares)
+                                ; spend current slot
+                                (spend_slot ENTRY_SLOT_1ST_CURRY_HASH (sha256tree existing_slot_value))
                                 locking_conditions
-                                ; else
-                                (x)
                             )
+                        )
+                        ; else
+                        (if existing_slot_shares
+                            (x)
+                            ; else
+                            locking_conditions
                         )
                     )
                 )

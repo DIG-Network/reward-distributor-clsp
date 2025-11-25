@@ -45,7 +45,7 @@
         shares_so_far
         conditions_so_far
     )
-        (if remaining_nfts_to_unlock
+        (if nfts_to_unlock
             (remove_nfts
                 curried_args_and_solution
                 remaining_nfts_to_unlock

@@ -19,8 +19,8 @@
     (include sha256tree.clib)
     (include curry.clib)
 
-    (defun notarized_payment (ph)
-        (list ph 1 (list ph))
+    (defun notarized_payment (ph amount)
+        (list ph amount (list ph))
     )
 
     (defun add_announcement_assert_and_create_security_condition (ann conditions)
@@ -52,7 +52,7 @@
                                 (c Entry_Custody_Puzzle_Hash cat_amount)
                             )
                             MY_P2_PUZZLE_HASH
-                        ))
+                        ) cat_amount)
                     )
                 )
             )

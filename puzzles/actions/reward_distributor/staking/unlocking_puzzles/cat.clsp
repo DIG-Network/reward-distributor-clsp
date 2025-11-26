@@ -56,7 +56,7 @@
                 )
                 (list RECEIVE_MESSAGE
                     18 ; puzzle hash - puzzle hash
-                    (list 'u' cat_parent_id) ; message
+                    (concat 'u' cat_parent_id) ; message
                     Entry_Custody_Puzzle_Hash ; sender
                 )
             ) ; output_conditions

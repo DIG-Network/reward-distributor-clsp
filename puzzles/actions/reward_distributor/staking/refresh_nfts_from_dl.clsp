@@ -43,9 +43,9 @@
             existing_slot_shares
         ))
         entry_payout_amount
-        payout_rounding_error 
-        shares_delta .
-        nfts_to_refresh
+        payout_rounding_error
+        shares_delta
+        new_nft_shares
     )
 ))
     (include condition_codes.clib)
@@ -53,64 +53,8 @@
     (include curry.clib)
     (include slots.clib)
 
-    (defun process_nfts ())
-
-    (defun process_slots (
-        (@ curried_args_and_solution (
-            (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
-            NFT_STATE_LAYER_MOD_HASH
-            NFT_OWNERSHIP_LAYER_MOD_HASH
-            OFFER_MOD_HASH
-            NONCE_MOD_HASH
-            MY_P2_PUZZLE_HASH
-            ENTRY_SLOT_1ST_CURRY_HASH ; after 1st curry
-            MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
-            ; /\ this prevents the reward distributor from 'stealing' earned rewards while not
-            ;    dropping the remove mirror tx from the mempool after each block
-            PRECISION
-            State_Truth
-            (
-                dl_root_hash
-            ) ; (partial) solution
-        ))
-        remaining_payout_amount
-        current_shares_delta
-        remaining_payout_rounding_error
-        (@ entry_slot_data (
-            (
-                (@ existing_slot_value (
-                    entry_custody_puzzle_hash 
-                    existing_slot_cumulative_payout .
-                    existing_slot_shares
-                ))
-                entry_payout_amount
-                payout_rounding_error 
-                shares_delta .
-                nfts_to_refresh
-            ) .
-            entry_slot_data_rest ; rest of entries
-        ))
-        conditions_so_far
-    )
-        (if entry_slot_data
-            (process_slots
-                curried_args_and_solution
-                (- remaining_payout_amount entry_payout_amount)
-                (+ current_shares_delta shares_delta)
-                (- remaining_payout_rounding_error payout_rounding_error)
-                entry_slot_data_rest
-                (process_nfts
-
-                    conditions_so_far
-                )
-            )
-            ; else
-            (if (any payout_amount shares_delta payout_rounding_error)
-                (x)
-                ; else
-                conditions_so_far
-            )
-        )
+    (defun create_coin_1_with_hint (ph)
+        (list CREATE_COIN ph 1 (list ph))
     )
 
     (c
@@ -119,7 +63,7 @@
             (list
                 (- total_reserves total_payout_amount)
                 (+ active_shares total_shares_delta)
-                (c cumulative_payout (+ remaining_rewards total_payout_rounding_error))
+                (c cumulative_payout (+ remaining_rewards payout_rounding_error))
                 Round_Time_Info
             ) ; new state
         )
@@ -127,6 +71,7 @@
             ; make sure the reward info is up to date
             (list ASSERT_BEFORE_SECONDS_ABSOLUTE (+ last_update MAX_SECONDS_OFFSET))
             (c
+                ; assert DL root hash
                 (list ASSERT_PUZZLE_ANNOUNCEMENT (sha256
                     (curry_hashes SINGLETON_MOD_HASH
                         (sha256tree DL_SINGLETON_STRUCT)
@@ -140,21 +85,76 @@
                                     (sha256_one)
                                 )
                             ) ; metadata hash
-                            dl_metadata_updater_hash_hash  
+                            dl_metadata_updater_hash_hash
                             dl_inner_puzzle_hash
                         )
                     )
                     '$'
-                )) ; assert DL root hash
-                (process_slots
-                    curried_args_and_solution
-                    total_payout_amount
-                    total_shares_delta
-                    total_payout_rounding_error
-                    entry_slot_data
-                    ()
+                ))
+                (c
+                    ; consume slot
+                    (spend_slot ENTRY_SLOT_1ST_CURRY_HASH
+                        (sha256tree existing_slot_value)
+                    )
+                    (c
+                        ; re-issue slot
+                        (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
+                            (sha256tree
+                                (c 
+                                    entry_custody_puzzle_hash
+                                    (c
+                                        existing_slot_cumulative_payout
+                                        (+ existing_slot_shares shares_delta)
+                                    )
+                                )
+                            ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                            entry_custody_puzzle_hash
+                        )
+                        ; restake NFT
+                        (list SEND_MESSAGE
+                            23 ; sender puzzle hash, receiver coin id
+                            (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
+                                1 
+                                (list
+                                    (create_coin_1_with_hint
+                                        (curry_hashes NONCE_MOD_HASH
+                                            (sha256tree (c Entry_Custody_Puzzle_Hash new_nft_shares))
+                                            MY_P2_PUZZLE_HASH
+                                        ) ; new puzzle hash
+                                    )
+                                )
+                            )) ; message = delegated puzzle hash
+                            (coinid
+                                nft_parent_id
+                                (curry_hashes SINGLETON_MOD_HASH
+                                    (sha256tree
+                                        (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
+                                    )
+                                    (curry_hashes NFT_STATE_LAYER_MOD_HASH
+                                        (sha256 1 NFT_STATE_LAYER_MOD_HASH)
+                                        nft_metadata_hash
+                                        nft_metadata_updater_hash_hash  
+                                        (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
+                                            (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
+                                            (sha256 1 nft_owner)
+                                            nft_transfer_porgram_hash
+                                            (curry_hashes NONCE_MOD_HASH
+                                                (sha256tree (c Entry_Custody_Puzzle_Hash (- new_nft_shares shares_delta)))
+                                                MY_P2_PUZZLE_HASH
+                                            )
+                                        )
+                                    )
+                                ) ; NFT puzzle hash
+                                1
+                            )
+                        )
+                    )
                 )
             )
         ) ; conditions
     )
 )
+
+; TODO: verify new NFT shares
+; TODO: payout rounding error checks
+; TODO: check nfts/nfts_from_dl/ stake/ unstake to ensure all checks are done

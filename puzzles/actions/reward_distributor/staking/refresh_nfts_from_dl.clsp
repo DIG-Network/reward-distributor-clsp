@@ -37,31 +37,23 @@
         dl_metadata_updater_hash_hash
         dl_inner_puzzle_hash .
 
-        ; total data used to more easily construct state
-        total_shares_delta
-        total_payout_amount
-        total_payout_rounding_error
-
-        ; entries-related data
-        ; each item corresponds to an entry slot
-        entry_slot_data
-
-        ; each item has the following structure:
-        ; (@ existing_slot_value (
-        ;     entry_custody_puzzle_hash 
-        ;     existing_slot_cumulative_payout .
-        ;     existing_slot_shares
-        ; ))
-        ; entry_payout_amount
-        ; payout_rounding_error 
-        ; shares_delta .
-        ; nfts_to_refresh
+        (@ existing_slot_value (
+            entry_custody_puzzle_hash 
+            existing_slot_cumulative_payout .
+            existing_slot_shares
+        ))
+        entry_payout_amount
+        payout_rounding_error 
+        shares_delta .
+        nfts_to_refresh
     )
 ))
     (include condition_codes.clib)
     (include sha256tree.clib)
     (include curry.clib)
     (include slots.clib)
+
+    (defun process_nfts ())
 
     (defun process_slots (
         (@ curried_args_and_solution (
@@ -81,9 +73,9 @@
                 dl_root_hash
             ) ; (partial) solution
         ))
-        payout_amount
-        shares_delta
-        payout_rounding_error
+        remaining_payout_amount
+        current_shares_delta
+        remaining_payout_rounding_error
         (@ entry_slot_data (
             (
                 (@ existing_slot_value (
@@ -98,14 +90,25 @@
             ) .
             entry_slot_data_rest ; rest of entries
         ))
+        conditions_so_far
     )
         (if entry_slot_data
-        
+            (process_slots
+                curried_args_and_solution
+                (- remaining_payout_amount entry_payout_amount)
+                (+ current_shares_delta shares_delta)
+                (- remaining_payout_rounding_error payout_rounding_error)
+                entry_slot_data_rest
+                (process_nfts
+
+                    conditions_so_far
+                )
+            )
             ; else
             (if (any payout_amount shares_delta payout_rounding_error)
                 (x)
                 ; else
-                ()
+                conditions_so_far
             )
         )
     )
@@ -149,6 +152,7 @@
                     total_shares_delta
                     total_payout_rounding_error
                     entry_slot_data
+                    ()
                 )
             )
         ) ; conditions

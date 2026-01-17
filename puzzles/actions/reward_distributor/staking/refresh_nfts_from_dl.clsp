@@ -35,7 +35,7 @@
         dl_root_hash
         dl_metadata_rest_hash_or_null
         dl_metadata_updater_hash_hash
-        dl_inner_puzzle_hash .
+        dl_inner_puzzle_hash
 
         (@ existing_slot_value (
             entry_custody_puzzle_hash 
@@ -46,6 +46,12 @@
         payout_rounding_error
         shares_delta
         new_nft_shares
+
+        nft_parent_id
+        nft_launcher_id
+        nft_metadata_hash
+        nft_metadata_updater_hash_hash
+        nft_transfer_porgram_hash
     )
 ))
     (include condition_codes.clib)
@@ -57,12 +63,13 @@
         (list CREATE_COIN ph 1 (list ph))
     )
 
+    ; main
     (c
         (c
             Ephemeral_State ; new ephemeral state
             (list
-                (- total_reserves total_payout_amount)
-                (+ active_shares total_shares_delta)
+                (- total_reserves entry_payout_amount)
+                (+ active_shares shares_delta)
                 (c cumulative_payout (+ remaining_rewards payout_rounding_error))
                 Round_Time_Info
             ) ; new state
@@ -118,7 +125,7 @@
                                 (list
                                     (create_coin_1_with_hint
                                         (curry_hashes NONCE_MOD_HASH
-                                            (sha256tree (c Entry_Custody_Puzzle_Hash new_nft_shares))
+                                            (sha256tree (c entry_custody_puzzle_hash new_nft_shares))
                                             MY_P2_PUZZLE_HASH
                                         ) ; new puzzle hash
                                     )
@@ -139,7 +146,7 @@
                                             (sha256 1 nft_owner)
                                             nft_transfer_porgram_hash
                                             (curry_hashes NONCE_MOD_HASH
-                                                (sha256tree (c Entry_Custody_Puzzle_Hash (- new_nft_shares shares_delta)))
+                                                (sha256tree (c entry_custody_puzzle_hash (- new_nft_shares shares_delta)))
                                                 MY_P2_PUZZLE_HASH
                                             )
                                         )

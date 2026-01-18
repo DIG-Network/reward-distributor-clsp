@@ -147,25 +147,28 @@
                         1
                     )
                 )
-                (if (all
-                    (= 
-                        dl_root_hash
-                        (simplify_merkle_proof
-                            (sha256tree (c nft_launcher_id new_nft_shares))
-                            nft_inclusion_proof
+                (c
+                    (list CREATE_PUZZLE_ANNOUNCEMENT (c 'r' nft_launcher_id))
+                    (if (all
+                        (= 
+                            dl_root_hash
+                            (simplify_merkle_proof
+                                (sha256tree (c nft_launcher_id new_nft_shares))
+                                nft_inclusion_proof
+                            )
                         )
+                        (> nft_shares_delta 0)
                     )
-                    (> nft_shares_delta 0)
-                )
-                    (restake_nfts
-                        curried_args_and_solution
-                        existing_slot_value
-                        nft_data_rest
-                        (- remaining_shares_delta nft_shares_delta)
-                        conditions_so_far
+                        (restake_nfts
+                            curried_args_and_solution
+                            existing_slot_value
+                            nft_data_rest
+                            (- remaining_shares_delta nft_shares_delta)
+                            conditions_so_far
+                        )
+                        ; else
+                        (x)
                     )
-                    ; else
-                    (x)
                 )
             )
             ; else

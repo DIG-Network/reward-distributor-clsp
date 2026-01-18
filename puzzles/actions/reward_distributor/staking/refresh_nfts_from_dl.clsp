@@ -68,6 +68,30 @@
     )
 
     (defun restake_nfts (
+        (@ curried_args_and_solution (
+            (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
+            NFT_STATE_LAYER_MOD_HASH
+            NFT_OWNERSHIP_LAYER_MOD_HASH
+            OFFER_MOD_HASH
+            NONCE_MOD_HASH
+            MY_P2_PUZZLE_HASH
+            ENTRY_SLOT_1ST_CURRY_HASH
+            MAX_SECONDS_OFFSET
+            PRECISION
+            State_Truth
+            (
+                dl_root_hash
+                dl_metadata_rest_hash_or_null
+                dl_metadata_updater_hash_hash
+                dl_inner_puzzle_hash
+
+                (@ existing_slot_value (
+                    entry_custody_puzzle_hash 
+                    existing_slot_cumulative_payout .
+                    existing_slot_shares
+                ))
+            ) ; partial solution
+        ))
         (@ nft_data (
             (
                 nft_shares_delta
@@ -122,7 +146,21 @@
                         1
                     )
                 )
-                (restake_nfts remaining_shares_delta (- remaining_shares_delta nft_shares_delta))
+                (if (= 
+                    dl_root_hash
+                    (simplify_merkle_proof
+                        (sha256tree (c nft_launcher_id new_nft_shares))
+                        nft_inclusion_proof
+                    )
+                )
+                    (restake_nfts
+                        curried_args_and_solution
+                        nft_data_rest
+                        (- remaining_shares_delta nft_shares_delta)
+                    )
+                    ; else
+                    (x)
+                )
             )
             ; else
             remaining_shares_delta ; needs to =0 for output list to be valid
@@ -148,13 +186,6 @@
             (> payout_rounding_error -1)
             (> PRECISION payout_rounding_error)
             (not (> existing_slot_shares entry_shares))
-            (= 
-                dl_root_hash
-                (simplify_merkle_proof
-                    (sha256tree (c nft_launcher_id new_nft_shares))
-                    nft_inclusion_proof
-                )
-            )
         )
             (c
                 ; make sure the reward info is up to date
@@ -200,7 +231,11 @@
                                 entry_custody_puzzle_hash
                             )
                             ; restake NFTs
-                            (restake_nfts nft_data total_shares_delta)
+                            (restake_nfts
+                                curried_args_and_solution
+                                nft_data
+                                total_shares_delta
+                            )
                         )
                     )
                 )

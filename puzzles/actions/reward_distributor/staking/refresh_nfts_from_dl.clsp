@@ -148,7 +148,7 @@
                     )
                 )
                 (c
-                    (list CREATE_PUZZLE_ANNOUNCEMENT (c 'r' nft_launcher_id))
+                    (list CREATE_PUZZLE_ANNOUNCEMENT (concat 'r' nft_launcher_id))
                     (if (all
                         (= 
                             dl_root_hash

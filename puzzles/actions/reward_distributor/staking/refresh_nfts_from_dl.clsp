@@ -182,7 +182,3 @@
         )
     )
 )
-
-; TODO: verify new NFT shares
-; TODO: payout rounding error checks
-; TODO: check nfts/nfts_from_dl/ stake/ unstake to ensure all checks are done

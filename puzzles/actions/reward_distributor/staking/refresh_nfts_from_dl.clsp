@@ -37,25 +37,28 @@
         dl_metadata_updater_hash_hash
         dl_inner_puzzle_hash
 
-        (@ existing_slot_value (
-            entry_custody_puzzle_hash 
-            existing_slot_cumulative_payout .
-            existing_slot_shares
-        ))
-        entry_payout_amount
-        payout_rounding_error
-        total_shares_delta .
+        total_entry_payout_amount
+        total_payout_rounding_error .
 
-        nft_data
-        ; nft_shares_delta
-        ; new_nft_shares
-        ; nft_parent_id
-        ; nft_launcher_id
-        ; nft_metadata_hash
-        ; nft_metadata_updater_hash_hash
-        ; nft_transfer_porgram_hash
-        ; nft_owner .
-        ; nft_inclusion_proof
+        slot_and_nft_data
+        ; (@ existing_slot_value (
+        ;     entry_custody_puzzle_hash 
+        ;     existing_slot_cumulative_payout .
+        ;     existing_slot_shares
+        ; ))
+        ; entry_payout_amount
+        ; payout_rounding_error
+        ; total_shares_delta .
+        ; nft_data
+        ; ; nft_shares_delta
+        ; ; new_nft_shares
+        ; ; nft_parent_id
+        ; ; nft_launcher_id
+        ; ; nft_metadata_hash
+        ; ; nft_metadata_updater_hash_hash
+        ; ; nft_transfer_porgram_hash
+        ; ; nft_owner .
+        ; ; nft_inclusion_proof
     )
 ))
     (include condition_codes.clib)
@@ -82,16 +85,12 @@
             State_Truth
             (
                 dl_root_hash
-                dl_metadata_rest_hash_or_null
-                dl_metadata_updater_hash_hash
-                dl_inner_puzzle_hash
-
-                (@ existing_slot_value (
-                    entry_custody_puzzle_hash 
-                    existing_slot_cumulative_payout .
-                    existing_slot_shares
-                ))
             ) ; partial solution
+        ))
+        (@ existing_slot_value (
+            entry_custody_puzzle_hash 
+            existing_slot_cumulative_payout .
+            existing_slot_shares
         ))
         (@ nft_data (
             (
@@ -108,6 +107,7 @@
             nft_data_rest
         ))
         remaining_shares_delta
+        conditions_so_far
     )
         (if nft_data
             (c
@@ -157,15 +157,117 @@
                 )
                     (restake_nfts
                         curried_args_and_solution
+                        existing_slot_value
                         nft_data_rest
                         (- remaining_shares_delta nft_shares_delta)
+                        conditions_so_far
                     )
                     ; else
                     (x)
                 )
             )
             ; else
-            remaining_shares_delta ; needs to =0 for output list to be valid
+            (if remaining_shares_delta
+                (x)
+                ; else - remaining shares delta is 0
+                conditions_so_far
+            )
+        )
+    )
+
+    (process_slot_and_nft_data (
+        (@ curried_args_and_solution (
+            (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
+            NFT_STATE_LAYER_MOD_HASH
+            NFT_OWNERSHIP_LAYER_MOD_HASH
+            OFFER_MOD_HASH
+            NONCE_MOD_HASH
+            MY_P2_PUZZLE_HASH
+            ENTRY_SLOT_1ST_CURRY_HASH
+            MAX_SECONDS_OFFSET
+            PRECISION
+            (
+                Ephemeral_State .
+                (@
+                    Current_State
+                    (
+                        total_reserves
+                        active_shares
+                        (@ Reward_Info (cumulative_payout . remaining_rewards))
+                        (@ Round_Time_Info (last_update . epoch_end))
+                    )
+                )
+            ) ; State Truth
+            (
+                dl_root_hash
+            ) ; partial solution
+        ))
+        (@ nft_and_slot_data (
+            (
+                (@ existing_slot_value (
+                    entry_custody_puzzle_hash 
+                    existing_slot_cumulative_payout .
+                    existing_slot_shares
+                ))
+                entry_payout_amount
+                payout_rounding_error
+                total_shares_delta .
+                nft_data
+            ) . nft_and_slot_data_rest
+        ))
+        remaining_payout_amount
+        remaining_rounding_error
+    )
+        (if nft_and_slot_data
+            (if (all
+                (=
+                    (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                    (+ (* entry_payout_amount PRECISION) payout_rounding_error)
+                )
+                (> payout_rounding_error -1)
+                (> PRECISION payout_rounding_error)
+                (not (> existing_slot_shares entry_shares))
+            )
+                (c
+                    ; consume slot
+                    (spend_slot ENTRY_SLOT_1ST_CURRY_HASH
+                        (sha256tree existing_slot_value)
+                    )
+                    (c
+                        ; re-issue slot
+                        (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
+                            (sha256tree
+                                (c 
+                                    entry_custody_puzzle_hash
+                                    (c
+                                        cumulative_payout
+                                        (+ existing_slot_shares total_shares_delta)
+                                    )
+                                )
+                            ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                            entry_custody_puzzle_hash
+                        )
+                        ; restake NFTs
+                        (restake_nfts
+                            curried_args_and_solution
+                            existing_slot_value
+                            nft_data
+                            total_shares_delta
+                            (process_slot_and_nft_data
+                                curried_args_and_solution
+                                nft_and_slot_data_rest
+                                (- remaining_payout_amount entry_payout_amount)
+                                (- remaining_rounding_error payout_rounding_error)
+                            )
+                        )
+                    )
+                )
+                ; else
+                (x)
+            )
+            ; else
+            ; both need to be 0 for the output list to be valid
+            (any remaining_payout_amount remaining_rounding_error)
         )
     )
 

@@ -53,7 +53,8 @@
         ; nft_launcher_id
         ; nft_metadata_hash
         ; nft_metadata_updater_hash_hash
-        ; nft_transfer_porgram_hash .
+        ; nft_transfer_porgram_hash
+        ; nft_owner .
         ; nft_inclusion_proof
     )
 ))
@@ -100,7 +101,8 @@
                 nft_launcher_id
                 nft_metadata_hash
                 nft_metadata_updater_hash_hash
-                nft_transfer_porgram_hash .
+                nft_transfer_porgram_hash
+                nft_owner .
                 nft_inclusion_proof
             ) .
             nft_data_rest

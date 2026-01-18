@@ -5,8 +5,6 @@
     ENTRY_SLOT_1ST_CURRY_HASH ; after 1st curry
     PAYOUT_THRESHOLD ; to prevent spam, payout needs to be >= PAYOUT_THRESHOLD
     PRECISION
-    REQUIRE_APPROVAL ; if true, require the payout puzzle hash to authorize withdrawal by
-                     ;   sending a message to the reward distributor
     (
         Ephemeral_State . ; not used
         (@

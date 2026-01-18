@@ -249,18 +249,26 @@
                             ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
                             entry_custody_puzzle_hash
                         )
-                        ; restake NFTs
-                        (restake_nfts
-                            curried_args_and_solution
-                            existing_slot_value
-                            nft_data
-                            nfts_total_shares_delta
-                            (process_slot_and_nft_data
+                        (c
+                            (list -42
+                                CREATE_COIN
+                                entry_custody_puzzle_hash
+                                entry_payout_amount
+                                (list entry_custody_puzzle_hash)
+                            )
+                            ; restake NFTs
+                            (restake_nfts
                                 curried_args_and_solution
-                                nft_and_slot_data_rest
-                                (- remaining_payout_amount entry_payout_amount)
-                                (- remaining_nfts_shares_delta nfts_total_shares_delta)
-                                (- remaining_rounding_error payout_rounding_error)
+                                existing_slot_value
+                                nft_data
+                                nfts_total_shares_delta
+                                (process_slot_and_nft_data
+                                    curried_args_and_solution
+                                    nft_and_slot_data_rest
+                                    (- remaining_payout_amount entry_payout_amount)
+                                    (- remaining_nfts_shares_delta nfts_total_shares_delta)
+                                    (- remaining_rounding_error payout_rounding_error)
+                                )
                             )
                         )
                     )
@@ -320,5 +328,3 @@
         ) ; conditions
     )
 )
-
-; TODO: actually send payout :)

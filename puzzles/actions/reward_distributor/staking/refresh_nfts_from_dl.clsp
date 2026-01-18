@@ -167,13 +167,13 @@
                             conditions_so_far
                         )
                         ; else
-                        (x "reason1")
+                        (x)
                     )
                 )
             )
             ; else
             (if remaining_shares_delta
-                (x "reason2")
+                (x)
                 ; else - remaining shares delta is 0
                 conditions_so_far
             )
@@ -277,7 +277,7 @@
                     )
                 )
                 ; else
-                (x "reason3")
+                (x)
             )
             ; else
             ; both need to be 0 for the output list to be valid

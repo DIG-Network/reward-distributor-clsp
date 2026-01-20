@@ -54,7 +54,7 @@
         (c
             (list ASSERT_PUZZLE_ANNOUNCEMENT ann)
             (c
-                (list CREATE_PUZZLE_ANNOUNCEMENT ann)
+                (list CREATE_PUZZLE_ANNOUNCEMENT (concat 'l' ann))
                 conditions
             )
         )

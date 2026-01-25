@@ -8,14 +8,13 @@
             (
                 total_reserves
                 active_shares
-                (cumulative_payout . remaining_rewards)
+                (cumulative_payout . remaining_rewards) .
                 (@ Round_Time_Info (last_update . epoch_end))
             ) 
         ) ; Truth
     )
-    (
-        update_time
-    )
+    ; solution
+    update_time
 )
     (include condition_codes.clib)
 
@@ -28,22 +27,31 @@
 
     (if (all (not (> update_time epoch_end)) (> update_time last_update))
         (c
-            (list
+            (c
                 Ephemeral_State ; new ephemeral state
-                total_reserves
-                active_shares
-                (calculate_new_distribution
-                    active_shares
-                    cumulative_payout
-                    remaining_rewards
-                    (if (> active_shares 0)
-                        (/ (* remaining_rewards (- update_time last_update)) (* active_shares (- epoch_end last_update)))
-                        ; else
-                        0
-                    ) ; cumulative_payout_delta
-                )
-                (c update_time epoch_end)
-            ) ; new state    
+                (c
+                    total_reserves
+                    (c
+                        active_shares
+                        (c
+                            (calculate_new_distribution
+                                active_shares
+                                cumulative_payout
+                                remaining_rewards
+                                (if (> active_shares 0)
+                                    (/
+                                        (* remaining_rewards (- update_time last_update))
+                                        (* active_shares (- epoch_end last_update))
+                                    )
+                                    ; else
+                                    0
+                                ) ; cumulative_payout_delta
+                            )
+                            (c update_time epoch_end)
+                        )
+                    )
+                ) ; new state
+            )
             (list
                 (list ASSERT_SECONDS_ABSOLUTE update_time)
                 (list

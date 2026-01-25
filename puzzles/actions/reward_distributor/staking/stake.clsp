@@ -24,14 +24,13 @@
         Ephemeral_State .
         Current_State
     )) ; Truth
-    (
-        lock_puzzle_solution .
-        (@ existing_slot_value (
-            entry_custody_puzzle_hash 
-            existing_slot_cumulative_payout . ; -1 if slot doesn't exist 
-            existing_slot_shares ; 0 if slot doesn't exist
-        ))
-    )
+    ; solution
+    lock_puzzle_solution .
+    (@ existing_slot_value (
+        entry_custody_puzzle_hash 
+        existing_slot_cumulative_payout . ; -1 if slot doesn't exist 
+        existing_slot_shares ; 0 if slot doesn't exist
+    ))
 )
     (include condition_codes.clib)
     (include sha256tree.clib)

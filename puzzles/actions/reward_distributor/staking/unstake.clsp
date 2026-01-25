@@ -23,15 +23,10 @@
             )
         )
     ) ; Truth
-    (
-        unlock_puzzle_solution
-        entry_payout_amount
-        payout_rounding_error 
-        ; entry slot data
-        entry_custody_puzzle_hash
-        entry_initial_cumulative_payout .
-        entry_shares
-    )
+    ; solution
+    (entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares) ; entry slot data
+    (entry_payout_amount . payout_rounding_error) . ; payout info
+    unlock_puzzle_solution
 ))
     (include condition_codes.clib)
     (include sha256tree.clib)
@@ -55,17 +50,10 @@
                         (@ Round_Time_Info (last_update . epoch_end))
                     )
                 )
-            ) 
-            (
-                unlock_puzzle_solution
-                entry_payout_amount
-                payout_rounding_error .
-                (@ entry_slot_data (
-                    entry_custody_puzzle_hash
-                    entry_initial_cumulative_payout .
-                    entry_shares
-                ))
             )
+            (@ entry_slot_data (entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares)) ; entry slot data
+            (entry_payout_amount . payout_rounding_error) . ; payout info
+            unlock_puzzle_solution
         ) ; curried_args_and_solution
         (shares_to_remove . unlock_conditions)
     )

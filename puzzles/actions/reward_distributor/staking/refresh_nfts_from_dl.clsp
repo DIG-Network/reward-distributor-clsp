@@ -78,9 +78,7 @@
             MAX_SECONDS_OFFSET
             PRECISION
             State_Truth
-            (
-                dl_root_hash
-            ) ; partial solution
+            dl_root_hash ; partial solution
         ))
         (@ existing_slot_value (
             entry_custody_puzzle_hash 
@@ -198,9 +196,7 @@
                     )
                 )
             ) ; State Truth
-            (
-                dl_root_hash
-            ) ; partial solution
+            dl_root_hash ; partial solution
         ))
         (@ nft_and_slot_data (
             (   

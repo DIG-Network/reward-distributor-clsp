@@ -15,7 +15,7 @@
             (
                 total_reserves
                 active_shares
-                (@ Reward_Info (cumulative_payout . remaining_rewards))
+                (@ Reward_Info (cumulative_payout . remaining_rewards)) .
                 (@ Round_Time_Info (last_update . epoch_end))
             )
         )
@@ -30,13 +30,16 @@
     (include slots.clib)
 
     (c
-        (list
+        (c
             Ephemeral_State
-            total_reserves
-            (+ active_shares entry_shares)
-            Reward_Info
-            Round_Time_Info
-        ) ; new state  
+            (c
+                total_reserves
+                (c
+                    (+ active_shares entry_shares)
+                    (c Reward_Info Round_Time_Info)
+                )
+            ) ; new state
+        )
         (list
             ; manager actually wants us to add this entry
             (list RECEIVE_MESSAGE

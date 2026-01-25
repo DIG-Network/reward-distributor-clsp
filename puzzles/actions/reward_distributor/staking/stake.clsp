@@ -66,7 +66,7 @@
                 (
                     total_reserves
                     active_shares
-                    (@ Reward_Info (cumulative_payout . remaining_rewards))
+                    (@ Reward_Info (cumulative_payout . remaining_rewards)) .
                     (@ Round_Time_Info (last_update . epoch_end))
                 )
             )
@@ -79,20 +79,26 @@
         (newly_locked_shares . locking_conditions)
     )
         (c
-            (list
+            (c
                 (+ Ephemeral_State 1)
-                total_reserves
-                (+ active_shares newly_locked_shares)
                 (c
-                    cumulative_payout
-                    (+
-                        remaining_rewards
-                        ; if there is no existing slot being used, existing_slot_shares is enforced to be 0
-                        (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                    total_reserves
+                    (c
+                        (+ active_shares newly_locked_shares)
+                        (c
+                            (c
+                                cumulative_payout
+                                (+
+                                    remaining_rewards
+                                    ; if there is no existing slot being used, existing_slot_shares is enforced to be 0
+                                    (* existing_slot_shares (- cumulative_payout existing_slot_cumulative_payout))
+                                )
+                            )
+                            Round_Time_Info
+                        )
                     )
-                )
-                Round_Time_Info
-            ) ; new state
+                ) ; new state
+            )
             (create_slot_and_announce
                 ENTRY_SLOT_1ST_CURRY_HASH
                 (sha256tree

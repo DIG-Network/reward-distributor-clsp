@@ -13,20 +13,19 @@
                 total_reserves .
                 (@ Current_State_Rest (
                         active_shares
-                        (@ Reward_Info (cumulative_payout . remaining_rewards))
+                        (@ Reward_Info (cumulative_payout . remaining_rewards)) .
                         Round_Time_Info
                     )
                 )
             )
         )
     ) ; Truth
-    (
-        entry_payout_amount
-        payout_rounding_error
-        entry_payout_puzzle_hash
-        entry_initial_cumulative_payout .
-        entry_shares
-    )
+    ; solution
+    entry_payout_amount
+    entry_payout_puzzle_hash
+    payout_rounding_error
+    entry_shares .
+    entry_initial_cumulative_payout
 )
     (include condition_codes.clib)
     (include curry.clib)

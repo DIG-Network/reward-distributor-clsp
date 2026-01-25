@@ -29,37 +29,33 @@
             )
         )
     ) ; Truth
-    (
-        ; DL-related data
-        dl_root_hash
-        dl_metadata_rest_hash_or_null
-        dl_metadata_updater_hash_hash
-        dl_inner_puzzle_hash
+    ; solution
+    ; DL-related data
+    dl_root_hash
+    (dl_metadata_rest_hash_or_null dl_metadata_updater_hash_hash . dl_inner_puzzle_hash)
+    
+    ; totals
+    (total_entry_payout_amount total_shares_delta . total_payout_rounding_error) .
 
-        total_entry_payout_amount
-        total_shares_delta
-        total_payout_rounding_error .
-
-        slot_and_nft_data
-        ; (@ existing_slot_value (
-        ;     entry_custody_puzzle_hash 
-        ;     existing_slot_cumulative_payout .
-        ;     existing_slot_shares
-        ; ))
-        ; entry_payout_amount
-        ; payout_rounding_error
-        ; nfts_total_shares_delta .
-        ; nft_data
-        ; ; nft_shares_delta
-        ; ; new_nft_shares
-        ; ; nft_parent_id
-        ; ; nft_launcher_id
-        ; ; nft_metadata_hash
-        ; ; nft_metadata_updater_hash_hash
-        ; ; nft_transfer_porgram_hash
-        ; ; nft_owner .
-        ; ; nft_inclusion_proof
-    )
+    slot_and_nft_data
+    ; (@ existing_slot_value (
+    ;     entry_custody_puzzle_hash 
+    ;     existing_slot_cumulative_payout .
+    ;     existing_slot_shares
+    ; ))
+    ; entry_payout_amount
+    ; payout_rounding_error
+    ; nfts_total_shares_delta .
+    ; nft_data
+    ; ; nft_shares_delta
+    ; ; new_nft_shares
+    ; ; nft_parent_id
+    ; ; nft_launcher_id
+    ; ; nft_metadata_hash
+    ; ; nft_metadata_updater_hash_hash
+    ; ; nft_transfer_porgram_hash
+    ; ; nft_owner .
+    ; ; nft_inclusion_proof
 ))
     (include condition_codes.clib)
     (include merkle_utils.clib)
@@ -207,14 +203,13 @@
             ) ; partial solution
         ))
         (@ nft_and_slot_data (
-            (
+            (   
                 (@ existing_slot_value (
                     entry_custody_puzzle_hash 
                     existing_slot_cumulative_payout .
                     existing_slot_shares
                 ))
-                entry_payout_amount
-                payout_rounding_error
+                (entry_payout_amount . payout_rounding_error) ; payout info
                 nfts_total_shares_delta .
                 nft_data
             ) . nft_and_slot_data_rest

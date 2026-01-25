@@ -27,8 +27,7 @@
         entry_initial_cumulative_payout .
         entry_shares
     ) ; entry slot
-    payout_rounding_error 
-    entry_payout_amount .
+    (entry_payout_amount . payout_rounding_error) . ; payout info
     manager_singleton_inner_puzzle_hash
 )
     (include condition_codes.clib)

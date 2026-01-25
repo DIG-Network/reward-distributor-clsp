@@ -13,18 +13,17 @@
             (
                 total_reserves
                 active_shares
-                (cumulative_payout . remaining_rewards)
+                (cumulative_payout . remaining_rewards) .
                 (last_update . epoch_end)
             ) 
         ) ; truth
     )
-    (
-        slot_epoch_time
-        slot_next_epoch_initialized
-        slot_total_rewards
-        epoch_total_rewards .
-        fee
-    )
+    ; solution
+    slot_epoch_time
+    slot_next_epoch_initialized
+    slot_total_rewards
+    epoch_total_rewards .
+    fee
 )
     (include condition_codes.clib)
     (include curry.clib)
@@ -37,7 +36,8 @@
         )
     )
 
-    (if (all (= last_update epoch_end)
+    (if (all
+        (= last_update epoch_end)
         (= (/ (* epoch_total_rewards FEE_BPS) 10000) fee)
         (any
             (all (= slot_epoch_time epoch_end) (= epoch_total_rewards slot_total_rewards)) ; slot contains info about next epoch
@@ -45,16 +45,22 @@
         )
     )
         (c
-            (list
+            (c
                 Ephemeral_State ; new ephemeral state
-                (- total_reserves fee)
-                active_shares
                 (c
-                    cumulative_payout
-                    (+ remaining_rewards (* (- epoch_total_rewards fee) PRECISION))
-                )
-                (c epoch_end (+ epoch_end EPOCH_SECONDS))
-            ) ; new state 
+                    (- total_reserves fee)
+                    (c
+                        active_shares
+                        (c
+                            (c
+                                cumulative_payout
+                                (+ remaining_rewards (* (- epoch_total_rewards fee) PRECISION))
+                            )
+                            (c epoch_end (+ epoch_end EPOCH_SECONDS))
+                        )
+                    )
+                ) ; new state 
+            ) 
             (c
                 (list
                     CREATE_PUZZLE_ANNOUNCEMENT

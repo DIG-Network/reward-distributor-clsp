@@ -1,0 +1,163 @@
+; nfts_from_dl.clsp by yakuhito
+;; Allows any NFTs presented in a datastore to be locked. Weights between NFTs may differ.
+
+;; This is a staking puzzle - output is (new_active_shares . output_conditions).
+;; Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+(mod (@ curried_args_and_solution (
+    (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
+    NFT_STATE_LAYER_MOD_HASH
+    NFT_OWNERSHIP_LAYER_MOD_HASH
+    OFFER_MOD_HASH
+    NONCE_MOD_HASH
+    MY_P2_PUZZLE_HASH
+    Ephemeral_State
+    Entry_Custody_Puzzle_Hash
+    my_id
+    nft_infos
+    dl_root_hash
+    dl_metadata_rest_hash_or_null
+    dl_metadata_updater_hash_hash .
+    dl_inner_puzzle_hash
+))
+    (include condition_codes.clib)
+    (include merkle_utils.clib)
+    (include sha256tree.clib)
+    (include curry.clib)
+
+    (defun notarized_payment (ph)
+        (list ph 1 (list ph))
+    )
+
+    (defun add_announcement_assert_and_create_security_condition (ann conditions)
+        (c
+            (list ASSERT_PUZZLE_ANNOUNCEMENT ann)
+            (c
+                (list CREATE_PUZZLE_ANNOUNCEMENT (concat 'l' ann))
+                conditions
+            )
+        )
+    )
+
+    (defun add_multiple_nfts (
+            (@ curried_args_and_solution (
+                (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
+                NFT_STATE_LAYER_MOD_HASH
+                NFT_OWNERSHIP_LAYER_MOD_HASH
+                OFFER_MOD_HASH
+                NONCE_MOD_HASH
+                MY_P2_PUZZLE_HASH
+                Ephemeral_State
+                Entry_Custody_Puzzle_Hash
+                my_id
+                initial_nft_infos
+                dl_root_hash
+                dl_metadata_rest_hash_or_null
+                dl_metadata_updater_hash_hash .
+                dl_inner_puzzle_hash
+            ))
+            (@
+                nft_infos
+                (
+                    (
+                        nft_launcher_id
+                        nft_metadata_hash
+                        nft_metadata_updater_hash_hash 
+                        nft_owner
+                        nft_transfer_porgram_hash
+                        nft_shares .
+                        nft_inclusion_proof
+                    ) .
+                    nft_infos_rest
+                )
+            )
+            shares_so_far
+            conditions_so_far
+        )
+        (if nft_infos
+            (add_multiple_nfts
+                curried_args_and_solution
+                nft_infos_rest
+                (+ shares_so_far nft_shares)
+                (add_announcement_assert_and_create_security_condition
+                    (sha256
+                        (curry_hashes SINGLETON_MOD_HASH
+                            (sha256tree
+                                (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
+                            )
+                            (curry_hashes NFT_STATE_LAYER_MOD_HASH
+                                (sha256 1 NFT_STATE_LAYER_MOD_HASH)
+                                nft_metadata_hash
+                                nft_metadata_updater_hash_hash  
+                                (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
+                                    (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
+                                    (sha256 1 nft_owner)
+                                    nft_transfer_porgram_hash
+                                    OFFER_MOD_HASH
+                                )
+                            )
+                        ) ; NFT puzzle hash
+                        (sha256tree 
+                            (list
+                                (sha256tree (c shares_so_far (c Ephemeral_State my_id))) ; nonce
+                                (notarized_payment (curry_hashes NONCE_MOD_HASH
+                                    (sha256tree
+                                        (c Entry_Custody_Puzzle_Hash nft_shares)
+                                    )
+                                    MY_P2_PUZZLE_HASH
+                                ))
+                            )
+                        )
+                    )
+                    (if (= 
+                        dl_root_hash
+                        (simplify_merkle_proof
+                            (sha256tree (c nft_launcher_id nft_shares))
+                            nft_inclusion_proof
+                        )
+                    )
+                        conditions_so_far
+                        ; else - NFT not in DL store or proof incorrect
+                        (x)
+                    )
+                )
+            )
+            ; else
+            (c
+                shares_so_far
+                (c
+                    (list ASSERT_PUZZLE_ANNOUNCEMENT (sha256
+                        (curry_hashes SINGLETON_MOD_HASH
+                            (sha256tree DL_SINGLETON_STRUCT)
+                            (curry_hashes NFT_STATE_LAYER_MOD_HASH
+                                (sha256 1 NFT_STATE_LAYER_MOD_HASH)
+                                (sha256 2
+                                    (sha256 1 dl_root_hash)
+                                    (if dl_metadata_rest_hash_or_null
+                                        dl_metadata_rest_hash_or_null
+                                        ; else
+                                        (sha256_one)
+                                    )
+                                )
+                                dl_metadata_updater_hash_hash  
+                                dl_inner_puzzle_hash
+                            )
+                        )
+                        '$'
+                    )) ; assert DL root hash
+                    (c
+                        (list ASSERT_MY_COIN_ID my_id)
+                        conditions_so_far
+                    )
+                )
+            )
+        )
+    )
+
+    (add_multiple_nfts
+        curried_args_and_solution
+        nft_infos
+        0
+        ()
+    )
+)

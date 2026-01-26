@@ -9,14 +9,13 @@
         Ephemeral_State . ; not used
         (@ Current_State (total_reserves . Current_State_Rest)) 
     ) ; Truth
-    (
-        reward_slot_epoch_time
-        reward_slot_next_epoch_initialized
-        reward_slot_total_rewards
-        clawback_ph
-        committed_value .
-        withdrawal_share
-    )
+    ; solution
+    reward_slot_epoch_time
+    withdrawal_share
+    clawback_ph
+    committed_value
+    reward_slot_total_rewards .
+    reward_slot_next_epoch_initialized
 )
     (include condition_codes.clib)
     (include curry.clib)
@@ -68,7 +67,9 @@
             ; make sure the clawback owner wants to go ahead
             (list RECEIVE_MESSAGE
                 18 ; puzzle hash - puzzle hash
-                () ; message
+                (concat 'w'
+                    (sha256 2 (sha256 1 reward_slot_epoch_time) (sha256 1 committed_value))
+                ) ; message
                 clawback_ph
             )
 

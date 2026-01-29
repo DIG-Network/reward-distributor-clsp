@@ -6,7 +6,7 @@ import super::super::reward_distributor::*;
 export fn main(
     Truth: RewardDistributorStateTruth,
     ...update_time: Int,
-) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+) -> (RewardDistributorStateTruth, List<Condition>) {
     let update_in_epoch = update_time <= Truth.State.round_time_info.epoch_end;
     let update_after_last = update_time > Truth.State.round_time_info.last_update;
     

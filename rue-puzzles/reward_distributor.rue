@@ -1,0 +1,24 @@
+// reward_distributor.rue by yakuhito
+// Common structs and functions shared across reward distributor actions
+
+export struct RewardInfo {
+    cumulative_payout: Int,
+    ...remaining_rewards: Int,
+}
+
+export struct RoundTimeInfo {
+    last_update: Int,
+    ...epoch_end: Int,
+}
+
+export struct RewardDistributorState {
+    total_reserves: Int,
+    active_shares: Int,
+    reward_info: RewardInfo,
+    ...round_time_info: RoundTimeInfo,
+}
+
+export struct RewardDistributorStateTruth {
+    Ephemeral_State: Int,
+    ...State: RewardDistributorState,
+}

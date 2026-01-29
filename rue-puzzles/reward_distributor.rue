@@ -64,3 +64,8 @@ export inline fn slot_value_hash_inline(
         )
     )
 }
+
+export struct EntryPayoutInfo {
+    entry_payout_amount: Int,
+    ...payout_rounding_error: Int,
+}

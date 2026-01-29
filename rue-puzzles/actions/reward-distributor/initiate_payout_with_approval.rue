@@ -1,5 +1,5 @@
-// initiate_payout_without_approval.clsp by yakuhito
-// Initiates a payout for a mirror. May be called by anyone for *any* mirror.
+// initiate_payout_with_approval.clsp by yakuhito
+// Initiates a payout for a mirror. Requires the receiver to send a message to the reward distributor.
 
 import super::super::reward_distributor::*;
 import super::super::slot::*;

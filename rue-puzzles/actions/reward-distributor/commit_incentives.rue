@@ -1,0 +1,148 @@
+// commit_incentives.rue by yakuhito
+// Add incentives for a future epoch
+
+import super::super::reward_distributor::*;
+import super::super::slot::*;
+
+export fn initialize_empty_slots(
+    REWARD_SLOT_1ST_CURRY_HASH: Bytes32,
+    EPOCH_SECONDS: Int,
+    start_epoch_time: Int,
+    end_epoch_time: Int,
+) -> List<Condition> {
+    if start_epoch_time == end_epoch_time {
+        // optimization: if adding EPOCH_SECONDS to start_epoch_time will not get to end_epoch_time,
+        //   this thing will run infinitely (good luck getting that into the mempool)
+        []
+    } else {
+        [
+            create_slot_with_hint(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                slot_value_hash_inline(
+                    start_epoch_time as Bytes,
+                    0x01, // next epoch is initialized
+                    0 as Bytes, // no rewards yet
+                ),
+                tree_hash_atom(start_epoch_time as Bytes),
+            ),
+            ...initialize_empty_slots(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                EPOCH_SECONDS,
+                start_epoch_time + EPOCH_SECONDS,
+                end_epoch_time,
+            ),
+        ]
+    }
+}
+
+export fn main(
+    REWARD_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    COMMITMENT_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    EPOCH_SECONDS: Int,
+    Truth: RewardDistributorStateTruth,
+    // The first 3 values are data stored in a slot that's proved to exist. This slot either:
+    //   - represents the epoch rewards are added to (if that slot is initialized)
+    //   - represents the 'end' of the epoch list - i.e., the last initialized slot with
+    //     an epoch start time *before* epoch_start; this way, the distributor knows to
+    //     initialize all slots in between, as well as the slot for the epoch incentives
+    //     are committed to
+    slot_epoch_time: Int,
+    slot_next_epoch_initialized: Bool,
+    slot_total_rewards: Int,
+    // Next argument: the start timestamp of the epoch the user's committing rewards to
+    epoch_start: Int,
+    clawback_ph: Bytes32,
+    ...rewards_to_add: Int,
+) -> (RewardDistributorStateTruth, List<Condition>) {
+    let future_epoch = epoch_start >= Truth.State.round_time_info.epoch_end;
+    assert future_epoch & (rewards_to_add > 0);
+
+    let commitment_slot_value_hash =
+        slot_value_hash_inline(
+            epoch_start as Bytes,
+            clawback_ph,
+            rewards_to_add as Bytes,
+        );
+    let reward_slot_value_hash =
+        slot_value_hash_inline(
+            slot_epoch_time as Bytes,
+            slot_next_epoch_initialized as Bytes,
+            slot_total_rewards as Bytes,
+        );
+
+    let base_conditions = if epoch_start == slot_epoch_time {
+        let new_reward_slot_value_hash = slot_value_hash_inline(
+            slot_epoch_time as Bytes,
+            slot_next_epoch_initialized as Bytes,
+            (slot_total_rewards + rewards_to_add) as Bytes,
+        );
+        
+        [
+            // slot already initialized - just add rewards
+            create_slot_with_hint(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                new_reward_slot_value_hash,
+                tree_hash_atom(slot_epoch_time as Bytes),
+            )
+        ]
+    } else {
+        // initialize slots up until slot_epoch_time
+        assert !slot_next_epoch_initialized;
+
+        let new_current_reward_slot_value_hash = slot_value_hash_inline(
+            slot_epoch_time as Bytes,
+            0x01,
+            slot_total_rewards as Bytes,
+        );
+        let new_committed_reward_slot_value_hash = slot_value_hash_inline(
+            epoch_start as Bytes,
+            0 as Bytes,
+            rewards_to_add as Bytes,
+        );
+
+        [
+            create_slot_with_hint(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                new_current_reward_slot_value_hash,
+                tree_hash_atom(slot_epoch_time as Bytes),
+            ),
+            // create the new latest slot with desired amount
+            create_slot_with_hint(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                new_committed_reward_slot_value_hash,
+                tree_hash_atom(epoch_start as Bytes),
+            ),
+            // initialize all slots in between
+            ...initialize_empty_slots(
+                REWARD_SLOT_1ST_CURRY_HASH,
+                EPOCH_SECONDS,
+                slot_epoch_time + EPOCH_SECONDS,
+                epoch_start,
+            ),
+        ]
+    };
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves + rewards_to_add,
+            active_shares: Truth.State.active_shares,
+            reward_info: Truth.State.reward_info,
+            round_time_info: Truth.State.round_time_info,
+        },
+    }, [
+        CreatePuzzleAnnouncement {
+            message: "c" + commitment_slot_value_hash,
+        },
+        create_slot_with_hint(
+            COMMITMENT_SLOT_1ST_CURRY_HASH,
+            commitment_slot_value_hash,
+            clawback_ph,
+        ),
+        spend_slot(
+            REWARD_SLOT_1ST_CURRY_HASH,
+            reward_slot_value_hash,
+        ),
+        ...base_conditions,
+    ])
+}

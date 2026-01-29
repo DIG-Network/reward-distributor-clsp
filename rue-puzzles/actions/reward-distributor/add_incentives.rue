@@ -1,0 +1,46 @@
+// add_incentives.rue by yakuhito
+// Adds incentives for the current epoch
+
+import super::super::reward_distributor::*;
+
+export fn main(
+    FEE_PAYOUT_PUZZLE_HASH: Bytes32,
+    FEE_BPS: Int, // * amount / 10000 will be given to the validator - rest is distributed to mirrors
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    amount: Int,
+    ...manager_fee: Int,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    let epoch_active = Truth.State.round_time_info.epoch_end > Truth.State.round_time_info.last_update;
+    let manager_fee_correct = manager_fee == amount * FEE_BPS / 10000;
+    
+    if (epoch_active) & (amount > 0) & (manager_fee_correct) {
+        (RewardDistributorStateTruth {
+            Ephemeral_State: Truth.Ephemeral_State,
+            State: RewardDistributorState {
+                total_reserves: Truth.State.total_reserves + amount - manager_fee,
+                active_shares: Truth.State.active_shares,
+                reward_info: RewardInfo {
+                    cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                    remaining_rewards: Truth.State.reward_info.remaining_rewards + (amount - manager_fee) * PRECISION,
+                },
+                round_time_info: Truth.State.round_time_info,
+            },
+        }, [
+            CreatePuzzleAnnouncement {
+                message: "i" + tree_hash_pair(
+                    tree_hash_atom(amount as Bytes),
+                    tree_hash_atom(Truth.State.round_time_info.epoch_end as Bytes),
+                ),
+            },
+            // condition will be returned by the reserve
+            ReserveCreateCoin {
+                puzzle_hash: FEE_PAYOUT_PUZZLE_HASH,
+                amount: manager_fee,
+                memos: [FEE_PAYOUT_PUZZLE_HASH],
+            }
+        ])
+    } else {
+        raise "Checks failed";
+    }
+}

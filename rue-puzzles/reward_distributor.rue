@@ -22,3 +22,11 @@ export struct RewardDistributorStateTruth {
     Ephemeral_State: Int,
     ...State: RewardDistributorState,
 }
+
+export struct ReserveCreateCoin {
+    opcode: Int = -42,
+    condition_opcode: Int = 51,
+    puzzle_hash: Bytes32,
+    amount: Int,
+    memos: List<Bytes32>,
+}

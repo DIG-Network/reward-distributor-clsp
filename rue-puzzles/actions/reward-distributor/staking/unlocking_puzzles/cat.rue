@@ -1,0 +1,67 @@
+// cat.rue by yakuhito
+// Sends staked CATs back to the user.
+
+// This is an unlocking puzzle - output is (unlocked_shares . output_conditions).
+// Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+import super::locking_puzzles::cat::{CatMaker, CatMakerSolution};
+import super::unstake::UnlockPuzzleOutput;
+
+export fn main(
+    CAT_MAKER: CatMaker,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    Ephemeral_State: Int,
+    Entry_Custody_Puzzle_Hash: Bytes32,
+    cat_parent_id: Bytes32,
+    cat_amount: Int,
+    cat_shares: Int,
+    ...cat_maker_solution: CatMakerSolution,
+) -> UnlockPuzzleOutput {
+    assert Ephemeral_State == 0;
+
+    let delegated_puzzle_hash = tree_hash(
+        (1, [ // leading 'q . ' in the delegated puzzle
+            CreateCoin {
+                puzzle_hash: Entry_Custody_Puzzle_Hash,
+                amount: cat_amount,
+                memos: Memos { value: [Entry_Custody_Puzzle_Hash] },
+            }
+        ])
+    );
+
+    let cat_inner_puzzle_hash = curry_tree_hash(
+        NONCE_MOD_HASH,
+        [
+            tree_hash((Entry_Custody_Puzzle_Hash, cat_shares)),
+            MY_P2_PUZZLE_HASH
+        ]
+    );
+    let cat_full_puzzle_hash = CAT_MAKER(
+        cat_inner_puzzle_hash,
+        ...cat_maker_solution
+    );
+    let locked_cat_id = coinid(
+        cat_parent_id,
+        cat_full_puzzle_hash,
+        cat_amount,
+    );
+
+    UnlockPuzzleOutput {
+        shares_to_remove: cat_shares, // unlocked_shares
+        unlock_conditions: [
+            // unlock locked CAT coin
+            SendMessage {
+                mode: 23, // sender puzzle hash, receiver coin id
+                message: delegated_puzzle_hash,
+                receiver: [locked_cat_id],
+            },
+            // only owner can unlock
+            ReceiveMessage {
+                mode: 18, // puzzle-puzzle
+                message: "u" + cat_parent_id,
+                sender: [Entry_Custody_Puzzle_Hash],
+            },
+        ],
+    }
+}

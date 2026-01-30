@@ -6,8 +6,8 @@
 
 import super::stake::LockPuzzleOutput;
 
-type CatMakerSolution = Any;
-type CatMaker = fn(
+export type CatMakerSolution = Any;
+export type CatMaker = fn(
     inner_puzzle_hash: Bytes32,
     ...solution: CatMakerSolution,
 ) -> Bytes32;

@@ -18,7 +18,7 @@
 import super::super::reward_distributor::*;
 import super::super::slot::*;
 
-struct LockPuzzleOutput {
+export struct LockPuzzleOutput {
     newly_locked_shares: Int,
     ...locking_conditions: List<Condition>,
 }

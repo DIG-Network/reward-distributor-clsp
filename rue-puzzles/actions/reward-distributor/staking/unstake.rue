@@ -7,7 +7,7 @@
 import super::super::reward_distributor::*;
 import super::super::slot::*;
 
-struct UnlockPuzzleOutput {
+export struct UnlockPuzzleOutput {
     shares_to_remove: Int,
     ...unlock_conditions: List<Condition | ReserveCreateCoin>,
 }

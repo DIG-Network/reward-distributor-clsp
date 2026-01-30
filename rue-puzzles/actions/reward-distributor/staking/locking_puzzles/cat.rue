@@ -1,0 +1,72 @@
+// cat.rue by yakuhito
+// Allows a certain CAT to be staked. Share number is equal to the number of CATs.
+
+// This is a staking puzzle - output is (new_active_shares . output_conditions).
+// Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+import super::stake::LockPuzzleOutput;
+
+type CatMakerSolution = Any;
+type CatMaker = fn(
+    inner_puzzle_hash: Bytes32,
+    ...solution: CatMakerSolution,
+) -> Bytes32;
+
+inline fn notarize_payment(
+    ph: Bytes32,
+    amount: Int,
+) -> List<Any> {
+    [ph, amount, [ph]]
+}
+
+export fn main(
+    CAT_MAKER: CatMaker,
+    OFFER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    Ephemeral_State: Int,
+    Entry_Custody_Puzzle_Hash: Bytes32,
+    my_id: Bytes32,
+    cat_amount: Int,
+    ...cat_maker_solution: CatMakerSolution,
+) -> LockPuzzleOutput {
+    let offer_cat_full_puzzle_hash = CAT_MAKER(
+        OFFER_MOD_HASH, ...cat_maker_solution
+    );
+    let cat_destination_puzzle_hash = curry_tree_hash(
+        NONCE_MOD_HASH,
+        [
+            tree_hash((Entry_Custody_Puzzle_Hash, cat_amount)),
+            MY_P2_PUZZLE_HASH
+        ]
+    );
+    let offer_announcement = tree_hash(
+        (
+            tree_hash((Ephemeral_State, my_id)), // nonce
+            (
+                notarize_payment(
+                    cat_destination_puzzle_hash,
+                    cat_amount
+                ),
+                nil
+            )
+        )
+    );
+    let announcement_id = sha256(
+        offer_cat_full_puzzle_hash + offer_announcement
+    );
+    LockPuzzleOutput {
+        newly_locked_shares: cat_amount,
+        locking_conditions: [
+            AssertPuzzleAnnouncement {
+                id: announcement_id,
+            },
+            CreatePuzzleAnnouncement {
+                message: "l" + announcement_id,
+            },
+            AssertMyCoinId {
+                coin_id: my_id,
+            },
+        ]
+    }
+}

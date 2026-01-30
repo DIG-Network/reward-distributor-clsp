@@ -1,0 +1,131 @@
+// refresh_nfts_from_dl.rue by yakuhito
+// Refreshes entries of *refreshable* NFT distributors. Anyone can call this action to update any
+//   entries where one or more NFTs now have a different number of associated shares than they did
+//   when they were initially staked.
+
+// Note: This puzzle was specifically optimized for DL-based NFTs. It assumes the locking puzzle is
+//   'nfts_from_dl.clsp' and the unlocking puzzle is 'nfts.clsp'.
+
+import super::super::super::reward_distributor::*;
+import super::super::super::slot::*;
+
+struct DlMetadataPack {
+    dl_metadata_rest_hash_or_null: Bytes32 | nil,
+    dl_metadata_updater_hash_hash: Bytes32,
+    ...dl_inner_puzzle_hash: Bytes32,
+}
+
+struct TotalsPack {
+    total_entry_payout_amount: Int,
+    total_shares_delta: Int,
+    ...total_payout_rounding_error: Int,
+}
+
+struct NftData {
+    nft_shares_delta: Int,
+    new_nft_shares: Int,
+    nft_parent_id: Bytes32,
+    nft_launcher_id: Bytes32,
+    nft_metadata_hash: Bytes32,
+    nft_metadata_updater_hash_hash: Bytes32,
+    nft_transfer_porgram_hash: Bytes32,
+    nft_owner: Bytes32,
+    ...nft_inclusion_proof: MerkleProof,
+}
+
+struct NftAndSlotData {
+    existing_slot_value: EntrySlotValue,
+    payout_info: EntryPayoutInfo,
+    nfts_total_shares_delta: Int,
+    ...nft_data: List<Any>,
+}
+
+inline fn singleton_full_puzzle_hash(
+    SINGLETON_MOD_HASH: Bytes32,
+    LAUNCHER_PUZZLE_HASH: Bytes32,
+    launcher_id: Bytes32,
+    inner_puzzle_hash: Bytes32,
+) -> Bytes32 {
+    curry_tree_hash(SINGLETON_MOD_HASH, [
+        tree_hash((SINGLETON_MOD_HASH, (launcher_id, LAUNCHER_PUZZLE_HASH))),
+        inner_puzzle_hash,
+    ])
+}
+
+export fn main(
+    DL_SINGLETON_STRUCT: SingletonStruct,
+    NFT_STATE_LAYER_MOD_HASH: Bytes32,
+    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    MAX_SECONDS_OFFSET: Int, // at most this amount of seconds can pass since last update
+    // /\ this prevents the reward distributor from 'stealing' earned rewards while not
+    //    dropping the remove mirror tx from the mempool after each block
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    // dl-related data
+    dl_root_hash: Bytes32,
+    {
+        dl_metadata_rest_hash_or_null,
+        dl_metadata_updater_hash_hash,
+        dl_inner_puzzle_hash,
+    }: DlMetadataPack,
+    // totals
+    {
+        total_entry_payout_amount,
+        total_shares_delta,
+        total_payout_rounding_error,
+    }: TotalsPack,
+    // slot and nft data
+    ...slot_and_nft_data: List<NftAndSlotData>,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    
+    let dl_inner_puzzle_hash = curry_tree_hash(
+        NFT_STATE_LAYER_MOD_HASH,
+        [
+            tree_hash_atom(NFT_STATE_LAYER_MOD_HASH),
+            tree_hash_pair(
+                tree_hash_atom(dl_root_hash),
+                if dl_metadata_rest_hash_or_null is nil {
+                    sha256_inline(0x01)
+                } else {
+                    dl_metadata_rest_hash_or_null
+                }
+            ), // metadata hash
+            dl_metadata_updater_hash_hash,
+            dl_inner_puzzle_hash,
+        ]
+    );
+    let dl_full_puzzle_hash = curry_tree_hash(
+        DL_SINGLETON_STRUCT.singleton_mod_hash,
+        [
+            tree_hash(DL_SINGLETON_STRUCT),
+            dl_inner_puzzle_hash,
+        ]
+    );
+    
+    (
+        RewardDistributorStateTruth {
+            Ephemeral_State: Truth.Ephemeral_State,
+            State: RewardDistributorState {
+                total_reserves: Truth.State.total_reserves - total_entry_payout_amount,
+                active_shares: Truth.State.active_shares + total_shares_delta,
+                reward_info: RewardInfo {
+                    cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                    remaining_rewards: Truth.State.reward_info.remaining_rewards + total_payout_rounding_error,
+                },
+                round_time_info: Truth.State.round_time_info,
+            },
+        }, [
+            // make sure the reward info is up to date
+            AssertBeforeSecondsAbsolute {
+                seconds: Truth.State.round_time_info.last_update + MAX_SECONDS_OFFSET,
+            },
+            // assert DL root hash
+            AssertPuzzleAnnouncement {
+                id: sha256(dl_full_puzzle_hash + "$"),
+            },
+        ]
+    )
+}

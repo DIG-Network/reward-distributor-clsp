@@ -69,3 +69,9 @@ export struct EntryPayoutInfo {
     entry_payout_amount: Int,
     ...payout_rounding_error: Int,
 }
+
+export struct SingletonStruct {
+    singleton_mod_hash: Bytes32,
+    launcher_id: Bytes32,
+    ...launcher_puzzle_hash: Bytes32,
+}

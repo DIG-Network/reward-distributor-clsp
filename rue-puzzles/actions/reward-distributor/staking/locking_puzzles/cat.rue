@@ -12,7 +12,7 @@ type CatMaker = fn(
     ...solution: CatMakerSolution,
 ) -> Bytes32;
 
-inline fn notarize_payment(
+export inline fn notarize_payment(
     ph: Bytes32,
     amount: Int,
 ) -> List<Any> {

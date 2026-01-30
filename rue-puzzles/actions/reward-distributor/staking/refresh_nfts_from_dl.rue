@@ -62,15 +62,15 @@ fn create_coin_1_with_hint(ph: Bytes32) -> Condition {
 }
 
 fn restake_nfts(
-    DL_SINGLETON_STRUCT: SingletonStruct,
-    NFT_STATE_LAYER_MOD_HASH: Bytes32,
-    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
-    NONCE_MOD_HASH: Bytes32,
-    MY_P2_PUZZLE_HASH: Bytes32,
-    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
-    MAX_SECONDS_OFFSET: Int,
-    PRECISION: Int,
-    dl_root_hash: Bytes32,
+    {
+        DL_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        NFT_OWNERSHIP_LAYER_MOD_HASH,
+        NONCE_MOD_HASH,
+        MY_P2_PUZZLE_HASH,
+        dl_root_hash,
+        ...args,
+    }: RestakeNftsArgs,
     entry_slot : EntrySlotValue,
     nft_data: List<NftData>,
     remaining_shares_delta: Int,
@@ -157,15 +157,7 @@ fn restake_nfts(
                 message: "r" + nft_launcher_id,
             },
             ...restake_nfts(
-                DL_SINGLETON_STRUCT,
-                NFT_STATE_LAYER_MOD_HASH,
-                NFT_OWNERSHIP_LAYER_MOD_HASH,
-                NONCE_MOD_HASH,
-                MY_P2_PUZZLE_HASH,
-                ENTRY_SLOT_1ST_CURRY_HASH,
-                MAX_SECONDS_OFFSET,
-                PRECISION,
-                dl_root_hash,
+                args,
                 entry_slot,
                 nft_data.rest,
                 remaining_shares_delta - nft_shares_delta,
@@ -176,16 +168,12 @@ fn restake_nfts(
 }
 
 fn process_slot_and_nft_data(
-    DL_SINGLETON_STRUCT: SingletonStruct,
-    NFT_STATE_LAYER_MOD_HASH: Bytes32,
-    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
-    NONCE_MOD_HASH: Bytes32,
-    MY_P2_PUZZLE_HASH: Bytes32,
-    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
-    MAX_SECONDS_OFFSET: Int,
-    PRECISION: Int,
-    Truth: RewardDistributorStateTruth,
-    dl_root_hash: Bytes32,
+    {
+        ENTRY_SLOT_1ST_CURRY_HASH,
+        PRECISION,
+        Truth,
+        ...args,
+    }: RestakeNftsArgs,
     nft_and_slot_data: List<NftAndSlotData>,
     remaining_payout_amount: Int,
     remaining_shares_delta: Int,
@@ -254,29 +242,12 @@ fn process_slot_and_nft_data(
             },
             // restake NFTs
             ...restake_nfts(
-                DL_SINGLETON_STRUCT,
-                NFT_STATE_LAYER_MOD_HASH,
-                NFT_OWNERSHIP_LAYER_MOD_HASH,
-                NONCE_MOD_HASH,
-                MY_P2_PUZZLE_HASH,
-                ENTRY_SLOT_1ST_CURRY_HASH,
-                MAX_SECONDS_OFFSET,
-                PRECISION,
-                dl_root_hash,
+                args,
                 existing_slot_value,
                 nft_data,
                 nfts_total_shares_delta,
                 process_slot_and_nft_data(
-                    DL_SINGLETON_STRUCT,
-                    NFT_STATE_LAYER_MOD_HASH,
-                    NFT_OWNERSHIP_LAYER_MOD_HASH,
-                    NONCE_MOD_HASH,
-                    MY_P2_PUZZLE_HASH,
-                    ENTRY_SLOT_1ST_CURRY_HASH,
-                    MAX_SECONDS_OFFSET,
-                    PRECISION,
-                    Truth,
-                    dl_root_hash,
+                    args,
                     nft_and_slot_data.rest,
                     remaining_payout_amount - entry_payout_amount,
                     remaining_shares_delta - nfts_total_shares_delta,
@@ -287,7 +258,7 @@ fn process_slot_and_nft_data(
     }
 }
 
-export fn main(
+struct RestakeNftsArgs {
     DL_SINGLETON_STRUCT: SingletonStruct,
     NFT_STATE_LAYER_MOD_HASH: Bytes32,
     NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
@@ -301,21 +272,33 @@ export fn main(
     Truth: RewardDistributorStateTruth,
     // dl-related data
     dl_root_hash: Bytes32,
-    {
-        dl_metadata_rest_hash_or_null,
-        dl_metadata_updater_hash_hash,
-        dl_inner_puzzle_hash,
-    }: DlMetadataPack,
+    dl_metadata_pack: DlMetadataPack,
     // totals
-    {
-        total_entry_payout_amount,
-        total_shares_delta,
-        total_payout_rounding_error,
-    }: TotalsPack,
+    totals_pack: TotalsPack,
     // slot and nft data
     ...slot_and_nft_data: List<NftAndSlotData>,
+}
+
+export fn main(
+    ...{
+        DL_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        MAX_SECONDS_OFFSET,
+        Truth,
+        dl_root_hash,
+        dl_metadata_pack: {
+            dl_metadata_rest_hash_or_null,
+            dl_metadata_updater_hash_hash,
+            dl_inner_puzzle_hash,
+        },
+        totals_pack: {
+            total_entry_payout_amount,
+            total_shares_delta,
+            total_payout_rounding_error,
+        },
+        ...args,
+    }: RestakeNftsArgs,
 ) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
-    
     let dl_inner_puzzle_hash = curry_tree_hash(
         NFT_STATE_LAYER_MOD_HASH,
         [
@@ -323,7 +306,7 @@ export fn main(
             tree_hash_pair(
                 tree_hash_atom(dl_root_hash),
                 if dl_metadata_rest_hash_or_null is nil {
-                    sha256_inline(0x01)
+                    sha256(0x01)
                 } else {
                     dl_metadata_rest_hash_or_null
                 }
@@ -362,17 +345,8 @@ export fn main(
                 id: sha256(dl_full_puzzle_hash + "$"),
             },
             ...process_slot_and_nft_data(
-                DL_SINGLETON_STRUCT,
-                NFT_STATE_LAYER_MOD_HASH,
-                NFT_OWNERSHIP_LAYER_MOD_HASH,
-                NONCE_MOD_HASH,
-                MY_P2_PUZZLE_HASH,
-                ENTRY_SLOT_1ST_CURRY_HASH,
-                MAX_SECONDS_OFFSET,
-                PRECISION,
-                Truth,
-                dl_root_hash,
-                slot_and_nft_data,
+                args,
+                args.slot_and_nft_data,
                 total_entry_payout_amount,
                 total_shares_delta,
                 total_payout_rounding_error,

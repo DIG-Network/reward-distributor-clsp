@@ -61,15 +61,18 @@ inline fn nft_launcher_id_stager(
 }
 
 fn add_multiple_nfts(
-    DID_SINGLETON_STRUCT: SingletonStruct,
-    NFT_STATE_LAYER_MOD_HASH: Bytes32,
-    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
-    OFFER_MOD_HASH: Bytes32,
-    NONCE_MOD_HASH: Bytes32,
-    MY_P2_PUZZLE_HASH: Bytes32,
-    Ephemeral_State: Int,
-    Entry_Custody_Puzzle_Hash: Bytes32,
-    my_id: Bytes32,
+    {
+        DID_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        NFT_OWNERSHIP_LAYER_MOD_HASH,
+        OFFER_MOD_HASH,
+        NONCE_MOD_HASH,
+        MY_P2_PUZZLE_HASH,
+        Ephemeral_State,
+        Entry_Custody_Puzzle_Hash,
+        my_id,
+        ...args,
+    }: NftsFromDidArgs,
     nft_infos: List<NftInfo>,
     shares_so_far: Int,
     conditions_so_far: List<Condition>,
@@ -151,15 +154,7 @@ fn add_multiple_nfts(
         ];
         
         add_multiple_nfts(
-           DID_SINGLETON_STRUCT,
-            NFT_STATE_LAYER_MOD_HASH,
-            NFT_OWNERSHIP_LAYER_MOD_HASH,
-            OFFER_MOD_HASH,
-            NONCE_MOD_HASH,
-            MY_P2_PUZZLE_HASH,
-            Ephemeral_State,
-            Entry_Custody_Puzzle_Hash,
-            my_id, 
+            args,
             nft_infos.rest,
             shares_so_far + 1,
             new_conditions_so_far,
@@ -167,7 +162,7 @@ fn add_multiple_nfts(
     }
 }
 
-export fn main(
+struct NftsFromDidArgs {
     DID_SINGLETON_STRUCT: SingletonStruct,
     NFT_STATE_LAYER_MOD_HASH: Bytes32,
     NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
@@ -178,18 +173,14 @@ export fn main(
     Entry_Custody_Puzzle_Hash: Bytes32,
     my_id: Bytes32,
     ...nft_infos: List<NftInfo>,
+}
+
+export fn main(
+    ...args: NftsFromDidArgs,
 ) -> LockPuzzleOutput {
     add_multiple_nfts(
-        DID_SINGLETON_STRUCT,
-        NFT_STATE_LAYER_MOD_HASH,
-        NFT_OWNERSHIP_LAYER_MOD_HASH,
-        OFFER_MOD_HASH,
-        NONCE_MOD_HASH,
-        MY_P2_PUZZLE_HASH,
-        Ephemeral_State,
-        Entry_Custody_Puzzle_Hash,
-        my_id,
-        nft_infos,
+        args,
+        args.nft_infos,
         0,
         []
     )

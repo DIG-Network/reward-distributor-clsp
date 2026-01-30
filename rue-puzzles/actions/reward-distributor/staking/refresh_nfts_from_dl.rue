@@ -175,6 +175,118 @@ fn restake_nfts(
     }
 }
 
+fn process_slot_and_nft_data(
+    DL_SINGLETON_STRUCT: SingletonStruct,
+    NFT_STATE_LAYER_MOD_HASH: Bytes32,
+    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
+    MAX_SECONDS_OFFSET: Int,
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    dl_root_hash: Bytes32,
+    nft_and_slot_data: List<NftAndSlotData>,
+    remaining_payout_amount: Int,
+    remaining_shares_delta: Int,
+    remaining_rounding_error: Int,
+) -> List<Condition | ReserveCreateCoin> {
+    if nft_and_slot_data is nil {
+        assert (
+            remaining_payout_amount == 0
+        ) & (
+            remaining_rounding_error == 0
+        );
+
+        []
+    } else {
+        inline let {
+            existing_slot_value,
+            payout_info,
+            nfts_total_shares_delta,
+            nft_data,
+        } = nft_and_slot_data.first;
+        inline let {
+            payout_puzzle_hash: entry_custody_puzzle_hash,
+            initial_cumulative_payout: existing_slot_cumulative_payout,
+            shares: existing_slot_shares,
+        } = existing_slot_value;
+        inline let {
+            entry_payout_amount,
+            payout_rounding_error,
+        } = payout_info;
+
+        let expected_val1 = (Truth.State.reward_info.cumulative_payout - existing_slot_cumulative_payout) * existing_slot_shares;
+        let expected_val2 = entry_payout_amount * PRECISION + payout_rounding_error;
+
+        assert (
+            expected_val1 == expected_val2
+        ) & (
+            payout_rounding_error > -1
+        ) & (
+            PRECISION > payout_rounding_error
+        ) & (
+            // can safely remove these shares
+            nfts_total_shares_delta <= existing_slot_shares
+        );
+
+        [
+            // consume slot
+            spend_slot(
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                tree_hash(existing_slot_value),
+            ),
+            // re-issue slot
+            create_slot_with_hint(
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                tree_hash(EntrySlotValue {
+                    payout_puzzle_hash: entry_custody_puzzle_hash,
+                    initial_cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                    shares: existing_slot_shares + nfts_total_shares_delta,
+                }),
+                entry_custody_puzzle_hash,
+            ),
+            // payout - condition will be returned by the reserve
+            ReserveCreateCoin {
+                puzzle_hash: entry_custody_puzzle_hash,
+                amount: entry_payout_amount,
+                memos: [entry_custody_puzzle_hash],
+            },
+            // restake NFTs
+            ...restake_nfts(
+                DL_SINGLETON_STRUCT,
+                NFT_STATE_LAYER_MOD_HASH,
+                NFT_OWNERSHIP_LAYER_MOD_HASH,
+                NONCE_MOD_HASH,
+                MY_P2_PUZZLE_HASH,
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                MAX_SECONDS_OFFSET,
+                PRECISION,
+                dl_root_hash,
+                existing_slot_value,
+                nft_data,
+                nfts_total_shares_delta,
+                process_slot_and_nft_data(
+                    DL_SINGLETON_STRUCT,
+                    NFT_STATE_LAYER_MOD_HASH,
+                    NFT_OWNERSHIP_LAYER_MOD_HASH,
+                    NONCE_MOD_HASH,
+                    MY_P2_PUZZLE_HASH,
+                    ENTRY_SLOT_1ST_CURRY_HASH,
+                    MAX_SECONDS_OFFSET,
+                    PRECISION,
+                    Truth,
+                    dl_root_hash,
+                    nft_and_slot_data.rest,
+                    remaining_payout_amount - entry_payout_amount,
+                    remaining_shares_delta - nfts_total_shares_delta,
+                    remaining_rounding_error - payout_rounding_error,
+                ),
+            )
+        ]
+    }
+}
+
 export fn main(
     DL_SINGLETON_STRUCT: SingletonStruct,
     NFT_STATE_LAYER_MOD_HASH: Bytes32,
@@ -249,6 +361,22 @@ export fn main(
             AssertPuzzleAnnouncement {
                 id: sha256(dl_full_puzzle_hash + "$"),
             },
+            ...process_slot_and_nft_data(
+                DL_SINGLETON_STRUCT,
+                NFT_STATE_LAYER_MOD_HASH,
+                NFT_OWNERSHIP_LAYER_MOD_HASH,
+                NONCE_MOD_HASH,
+                MY_P2_PUZZLE_HASH,
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                MAX_SECONDS_OFFSET,
+                PRECISION,
+                Truth,
+                dl_root_hash,
+                slot_and_nft_data,
+                total_entry_payout_amount,
+                total_shares_delta,
+                total_payout_rounding_error,
+            ),
         ]
     )
 }

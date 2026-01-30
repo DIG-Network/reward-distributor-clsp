@@ -7,6 +7,7 @@
 //   'nfts_from_dl.clsp' and the unlocking puzzle is 'nfts.clsp'.
 
 import super::super::super::reward_distributor::*;
+import super::super::super::merkle_utils::*;
 import super::super::super::slot::*;
 
 struct DlMetadataPack {
@@ -37,7 +38,7 @@ struct NftAndSlotData {
     existing_slot_value: EntrySlotValue,
     payout_info: EntryPayoutInfo,
     nfts_total_shares_delta: Int,
-    ...nft_data: List<Any>,
+    ...nft_data: List<NftData>,
 }
 
 inline fn singleton_full_puzzle_hash(
@@ -50,6 +51,128 @@ inline fn singleton_full_puzzle_hash(
         tree_hash((SINGLETON_MOD_HASH, (launcher_id, LAUNCHER_PUZZLE_HASH))),
         inner_puzzle_hash,
     ])
+}
+
+fn create_coin_1_with_hint(ph: Bytes32) -> Condition {
+    CreateCoin {
+        puzzle_hash: ph,
+        amount: 1,
+        memos: Memos { value: [ph] },
+    }
+}
+
+fn restake_nfts(
+    DL_SINGLETON_STRUCT: SingletonStruct,
+    NFT_STATE_LAYER_MOD_HASH: Bytes32,
+    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
+    MAX_SECONDS_OFFSET: Int,
+    PRECISION: Int,
+    dl_root_hash: Bytes32,
+    entry_slot : EntrySlotValue,
+    nft_data: List<NftData>,
+    remaining_shares_delta: Int,
+    conditions_so_far: List<Condition | ReserveCreateCoin>,
+) -> List<Condition | ReserveCreateCoin> {
+    if nft_data is nil {
+        assert remaining_shares_delta == 0;
+        // remaining shares delta is 0
+        conditions_so_far
+    } else {
+        inline let {
+            nft_shares_delta,
+            new_nft_shares,
+            nft_parent_id,
+            nft_launcher_id,
+            nft_metadata_hash,
+            nft_metadata_updater_hash_hash,
+            nft_transfer_porgram_hash,
+            nft_owner,
+            nft_inclusion_proof,
+        } = nft_data.first;
+
+        let new_nft_puzle_hash = curry_tree_hash(
+            NONCE_MOD_HASH,
+            [
+                tree_hash((entry_slot.payout_puzzle_hash, new_nft_shares)),
+                MY_P2_PUZZLE_HASH
+            ]
+        );
+        let delegated_puzzle_hash = tree_hash(
+            // 1 is the leading 'q . ' in the delegated puzzle
+            (1, [create_coin_1_with_hint(new_nft_puzle_hash)])
+        );
+
+        let nft_inner_puzzle_hash = curry_tree_hash(
+            NFT_STATE_LAYER_MOD_HASH,
+            [
+                tree_hash_atom(NFT_STATE_LAYER_MOD_HASH),
+                nft_metadata_hash,
+                nft_metadata_updater_hash_hash,
+                curry_tree_hash(
+                    NFT_OWNERSHIP_LAYER_MOD_HASH,
+                    [
+                        tree_hash_atom(NFT_OWNERSHIP_LAYER_MOD_HASH),
+                        tree_hash_atom(nft_owner),
+                        nft_transfer_porgram_hash,
+                        curry_tree_hash(NONCE_MOD_HASH, [
+                            tree_hash((entry_slot.payout_puzzle_hash, (new_nft_shares - nft_shares_delta))),
+                            MY_P2_PUZZLE_HASH
+                        ])
+                    ]
+                )
+            ]
+        );
+        let nft_coin_id = coinid(
+            nft_parent_id,
+            singleton_full_puzzle_hash(
+                DL_SINGLETON_STRUCT.singleton_mod_hash,
+                DL_SINGLETON_STRUCT.launcher_puzzle_hash,
+                nft_launcher_id,
+                nft_inner_puzzle_hash
+            ),
+            1,
+        );
+
+        assert (
+            nft_shares_delta != 0
+        ) & (
+            dl_root_hash == simplify_merkle_proof(
+                tree_hash((nft_launcher_id, new_nft_shares)),
+                nft_inclusion_proof,
+            )
+        );
+
+        [
+            SendMessage {
+                mode: 23, // sender puzzle hash, receiver coin id
+                message: delegated_puzzle_hash,
+                receiver: [
+                    nft_coin_id,
+                ]
+            },
+            CreatePuzzleAnnouncement {
+                message: "r" + nft_launcher_id,
+            },
+            ...restake_nfts(
+                DL_SINGLETON_STRUCT,
+                NFT_STATE_LAYER_MOD_HASH,
+                NFT_OWNERSHIP_LAYER_MOD_HASH,
+                NONCE_MOD_HASH,
+                MY_P2_PUZZLE_HASH,
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                MAX_SECONDS_OFFSET,
+                PRECISION,
+                dl_root_hash,
+                entry_slot,
+                nft_data.rest,
+                remaining_shares_delta - nft_shares_delta,
+                conditions_so_far,
+            )
+        ]
+    }
 }
 
 export fn main(

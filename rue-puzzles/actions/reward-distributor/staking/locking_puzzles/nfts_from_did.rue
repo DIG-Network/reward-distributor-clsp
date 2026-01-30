@@ -51,7 +51,8 @@ inline fn nft_launcher_id_stager(
     let did_coin_id = coinid(
         did_proof.parent_info,
         curry_tree_hash(DID_SINGLETON_STRUCT.singleton_mod_hash, [
-            tree_hash((DID_SINGLETON_STRUCT, did_proof.inner_ph)),
+            tree_hash(DID_SINGLETON_STRUCT),
+            did_proof.inner_ph,
         ]),
         did_proof.amount,
     );

@@ -8,6 +8,7 @@
 
 import super::super::super::reward_distributor::*;
 import super::super::super::slot::*;
+import std::singleton::SingletonStruct;
 
 struct DlMetadataPack {
     dl_metadata_rest_hash_or_null: Bytes32 | nil,
@@ -127,7 +128,7 @@ fn restake_nfts(
         let nft_coin_id = coinid(
             nft_parent_id,
             singleton_full_puzzle_hash(
-                DL_SINGLETON_STRUCT.singleton_mod_hash,
+                DL_SINGLETON_STRUCT.mod_hash,
                 DL_SINGLETON_STRUCT.launcher_puzzle_hash,
                 nft_launcher_id,
                 nft_inner_puzzle_hash
@@ -315,7 +316,7 @@ export fn main(
         ]
     );
     let dl_full_puzzle_hash = curry_tree_hash(
-        DL_SINGLETON_STRUCT.singleton_mod_hash,
+        DL_SINGLETON_STRUCT.mod_hash,
         [
             tree_hash(DL_SINGLETON_STRUCT),
             dl_inner_puzzle_hash,

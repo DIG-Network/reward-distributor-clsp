@@ -4,9 +4,9 @@
 // This is a staking puzzle - output is (new_active_shares . output_conditions).
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
-import super::super::reward_distributor::*;
 import super::stake::LockPuzzleOutput;
 import cat::notarize_payment;
+import std::singleton::SingletonStruct;
 
 struct NftInfo {
     nft_launcher_id: Bytes32,
@@ -57,7 +57,7 @@ fn add_multiple_nfts(
             ]
         );
         let dl_full_puzzle_hash = curry_tree_hash(
-            DID_SINGLETON_STRUCT.singleton_mod_hash,
+            DID_SINGLETON_STRUCT.mod_hash,
             [
                 tree_hash(DID_SINGLETON_STRUCT),
                 dl_inner_puzzle_hash,
@@ -109,9 +109,9 @@ fn add_multiple_nfts(
             ]
         );
         let nft_puzzle_hash = curry_tree_hash(
-            DID_SINGLETON_STRUCT.singleton_mod_hash,
+            DID_SINGLETON_STRUCT.mod_hash,
             [
-                tree_hash((DID_SINGLETON_STRUCT.singleton_mod_hash, (nft_launcher_id, DID_SINGLETON_STRUCT.launcher_puzzle_hash))),
+                tree_hash((DID_SINGLETON_STRUCT.mod_hash, (nft_launcher_id, DID_SINGLETON_STRUCT.launcher_puzzle_hash))),
                 nft_inner_puzzle_hash,
             ]
         );

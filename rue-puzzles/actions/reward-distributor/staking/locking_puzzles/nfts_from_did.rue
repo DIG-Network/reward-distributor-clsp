@@ -5,7 +5,7 @@
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
 import super::stake::LockPuzzleOutput;
-import cat::notarize_payment;
+import std::offer::*;
 import std::singleton::SingletonStruct;
 
 struct OneNftProof {
@@ -130,14 +130,15 @@ fn add_multiple_nfts(
                 MY_P2_PUZZLE_HASH,
             ]
         );
-        let offer_announcement = tree_hash((
-            // nonce
-            tree_hash((shares_so_far, (Ephemeral_State, my_id))),
-            (
-                notarize_payment(target_inner_puzzle_hash, 1),
-                nil
-            )
-        ));
+
+        let offer_announcement = tree_hash(NotarizedPayment {
+            nonce: tree_hash((shares_so_far, (Ephemeral_State, my_id))),
+            payments: [Payment {
+                puzzle_hash: target_inner_puzzle_hash,
+                amount: 1,
+                memos: Memos { value: [target_inner_puzzle_hash] },
+            }],
+        });
 
         let announcement_id = sha256(
             nft_puzzle_hash + offer_announcement

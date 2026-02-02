@@ -19,9 +19,9 @@ export fn initialize_empty_slots(
             create_slot_with_hint(
                 REWARD_SLOT_1ST_CURRY_HASH,
                 slot_value_hash(
-                    start_epoch_time as Bytes,
-                    0x01, // next epoch is initialized
-                    0 as Bytes, // no rewards yet
+                    start_epoch_time,
+                    1, // next epoch is initialized
+                    0, // no rewards yet
                 ),
                 tree_hash_atom(start_epoch_time as Bytes),
             ),
@@ -59,22 +59,22 @@ export fn main(
 
     let commitment_slot_value_hash =
         slot_value_hash(
-            epoch_start as Bytes,
+            epoch_start,
             clawback_ph,
-            rewards_to_add as Bytes,
+            rewards_to_add,
         );
     let reward_slot_value_hash =
         slot_value_hash(
-            slot_epoch_time as Bytes,
-            slot_next_epoch_initialized as Bytes,
-            slot_total_rewards as Bytes,
+            slot_epoch_time,
+            slot_next_epoch_initialized,
+            slot_total_rewards,
         );
 
     let base_conditions = if epoch_start == slot_epoch_time {
         let new_reward_slot_value_hash = slot_value_hash(
-            slot_epoch_time as Bytes,
-            slot_next_epoch_initialized as Bytes,
-            (slot_total_rewards + rewards_to_add) as Bytes,
+            slot_epoch_time,
+            slot_next_epoch_initialized,
+            slot_total_rewards + rewards_to_add,
         );
         
         [
@@ -90,14 +90,14 @@ export fn main(
         assert !slot_next_epoch_initialized;
 
         let new_current_reward_slot_value_hash = slot_value_hash(
-            slot_epoch_time as Bytes,
-            0x01,
-            slot_total_rewards as Bytes,
+            slot_epoch_time,
+            1,
+            slot_total_rewards,
         );
         let new_committed_reward_slot_value_hash = slot_value_hash(
-            epoch_start as Bytes,
-            0 as Bytes,
-            rewards_to_add as Bytes,
+            epoch_start,
+            0,
+            rewards_to_add,
         );
 
         [

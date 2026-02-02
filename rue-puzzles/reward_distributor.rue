@@ -52,15 +52,15 @@ export struct EntrySlotValue {
 }
 
 export fn slot_value_hash(
-    first_val: Bytes,
-    second_val: Bytes,
-    third_val: Bytes,
+    first_val: Atom,
+    second_val: Atom,
+    third_val: Atom,
 ) -> Bytes32 {
     tree_hash_pair(
-        tree_hash_atom(first_val),
+        tree_hash_atom(first_val as Bytes),
         tree_hash_pair(
-            tree_hash_atom(second_val),
-            tree_hash_atom(third_val),
+            tree_hash_atom(second_val as Bytes),
+            tree_hash_atom(third_val as Bytes),
         )
     )
 }

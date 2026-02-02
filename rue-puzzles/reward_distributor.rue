@@ -24,8 +24,8 @@ export struct RewardDistributorStateTruth {
 }
 
 export struct ReserveCreateCoin {
-    opcode: Int = -42,
-    condition_opcode: Int = 51,
+    opcode = -42,
+    condition_opcode = 51,
     puzzle_hash: Bytes32,
     amount: Int,
     memos: List<Bytes32>,

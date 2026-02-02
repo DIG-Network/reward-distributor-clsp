@@ -7,7 +7,6 @@
 //   'nfts_from_dl.clsp' and the unlocking puzzle is 'nfts.clsp'.
 
 import super::super::super::reward_distributor::*;
-import super::super::super::merkle_utils::*;
 import super::super::super::slot::*;
 
 struct DlMetadataPack {

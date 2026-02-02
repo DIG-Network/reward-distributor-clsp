@@ -6,7 +6,6 @@
 
 import super::super::reward_distributor::*;
 import super::stake::LockPuzzleOutput;
-import super::super::merkle_utils::*;
 import cat::notarize_payment;
 
 struct NftInfo {

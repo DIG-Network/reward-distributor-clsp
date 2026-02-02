@@ -73,7 +73,7 @@ export fn main(
         },
         // approval message contains everything 'important' about the payout
         ReceiveMessage {
-            mode: 18,
+            mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
             message: "p" + tree_hash_pair(
                 tree_hash_atom(entry_payout_amount as Bytes),
                 tree_hash_atom(payout_rounding_error as Bytes),

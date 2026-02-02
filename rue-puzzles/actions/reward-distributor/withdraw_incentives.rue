@@ -69,7 +69,7 @@ export fn main(
 
         // make sure the clawback owner wants to go ahead
         ReceiveMessage {
-            mode: 18, // puzzle-puzzle
+            mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
             message: "w" + tree_hash_pair(
                 tree_hash_atom(reward_slot_epoch_time as Bytes),
                 tree_hash_atom(committed_value as Bytes),

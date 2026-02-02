@@ -147,7 +147,7 @@ fn restake_nfts(
 
         [
             SendMessage {
-                mode: 23, // sender puzzle hash, receiver coin id
+                mode: SENDER_PUZZLE | RECEIVER_COIN,
                 message: delegated_puzzle_hash,
                 receiver: [
                     nft_coin_id,

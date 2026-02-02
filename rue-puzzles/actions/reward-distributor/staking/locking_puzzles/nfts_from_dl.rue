@@ -81,7 +81,7 @@ fn add_multiple_nfts(
             ],
         }
     } else {
-        let {
+        inline let {
             nft_launcher_id,
             nft_metadata_hash,
             nft_metadata_updater_hash_hash,

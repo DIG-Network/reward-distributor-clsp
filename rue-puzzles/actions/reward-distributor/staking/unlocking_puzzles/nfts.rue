@@ -28,14 +28,6 @@ struct NftsUnlockingPuzzleArgs {
     ...nfts_to_unlock: List<NftInfo>,
 }
 
-fn create_coin_1_with_hint(ph: Bytes32) -> Condition {
-    CreateCoin {
-        puzzle_hash: ph,
-        amount: 1,
-        memos: Memos { value: [ph] },
-    }
-}
-
 fn remove_nfts(
     {
         SINGLETON_MOD_HASH,
@@ -69,7 +61,13 @@ fn remove_nfts(
 
         let delegated_puzzle_hash = tree_hash(
             // 1 is the leading 'q . ' in the delegated puzzle
-            (1, [create_coin_1_with_hint(Entry_Custody_Puzzle_Hash)])
+            (1, [
+                CreateCoin {
+                    puzzle_hash: Entry_Custody_Puzzle_Hash,
+                    amount: 1,
+                    memos: Memos { value: [Entry_Custody_Puzzle_Hash] },
+                }
+            ])
         );
 
         let locked_nft_inner_puzzle_hash = curry_tree_hash(
@@ -107,13 +105,13 @@ fn remove_nfts(
         let new_conditions_so_far = [
             // remove entry / unlock NFT
             SendMessage {
-                mode: 23, // sender puzzle hash, receiver coin id
+                mode: SENDER_PUZZLE | RECEIVER_COIN,
                 message: delegated_puzzle_hash,
                 receiver: [locked_nft_coin_id]
             },
             // owner actually wants us to remove this entry
             ReceiveMessage {
-                mode: 18, // puzzle-puzzle
+                mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
                 message: "u" + nft_launcher_id,
                 sender: [Entry_Custody_Puzzle_Hash],
             },

@@ -63,7 +63,7 @@ export fn main(
         [
             // receive message that giving up rewards is ok
             ReceiveMessage {
-                mode: 18, // puzzle-puzzle
+                mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
                 message: "s" + tree_hash_atom(remaining_rewards_delta as Bytes),
                 sender: [
                     entry_custody_puzzle_hash,

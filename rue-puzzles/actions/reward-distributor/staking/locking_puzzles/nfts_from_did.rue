@@ -34,7 +34,7 @@ fn nft_lancher_id(
     if nft_proofs is nil {
         did_coin_id
     } else {
-        let { puzzle_hash, amount } = nft_proofs.first;
+        inline let { puzzle_hash, amount } = nft_proofs.first;
         coinid(
             nft_lancher_id(did_coin_id, nft_proofs.rest),
             puzzle_hash,
@@ -47,7 +47,7 @@ inline fn nft_launcher_id_stager(
     DID_SINGLETON_STRUCT: SingletonStruct,
     proof: NftProof,
 ) -> Bytes32 {
-    let (did_proof, nft_proofs) = proof;
+    inline let (did_proof, nft_proofs) = proof;
     let did_coin_id = coinid(
         did_proof.parent_info,
         curry_tree_hash(DID_SINGLETON_STRUCT.mod_hash, [
@@ -88,7 +88,7 @@ fn add_multiple_nfts(
             ],
         }
     } else {
-        let {
+        inline let {
             nft_metadata_hash,
             nft_metadata_updater_hash_hash,
             nft_owner,

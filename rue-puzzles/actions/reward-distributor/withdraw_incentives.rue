@@ -18,19 +18,19 @@ export fn main(
 ) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
     assert withdrawal_share == committed_value * WITHDRAWAL_SHARE_BPS / 10000;
     
-    let spent_reward_slot_value_hash = slot_value_hash_inline(
+    let spent_reward_slot_value_hash = slot_value_hash(
         reward_slot_epoch_time as Bytes,
         reward_slot_next_epoch_initialized as Bytes,
         reward_slot_total_rewards as Bytes,
     );
-    let created_reward_slot_value_hash = slot_value_hash_inline(
+    let created_reward_slot_value_hash = slot_value_hash(
         reward_slot_epoch_time as Bytes,
         reward_slot_next_epoch_initialized as Bytes,
         (reward_slot_total_rewards - withdrawal_share) as Bytes,
     );
     let created_reward_slot_hint = tree_hash_atom(reward_slot_epoch_time as Bytes);
 
-    let spent_commitment_slot_value_hash = slot_value_hash_inline(
+    let spent_commitment_slot_value_hash = slot_value_hash(
         reward_slot_epoch_time as Bytes,
         clawback_ph,
         committed_value as Bytes,

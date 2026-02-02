@@ -18,7 +18,7 @@ export fn initialize_empty_slots(
         [
             create_slot_with_hint(
                 REWARD_SLOT_1ST_CURRY_HASH,
-                slot_value_hash_inline(
+                slot_value_hash(
                     start_epoch_time as Bytes,
                     0x01, // next epoch is initialized
                     0 as Bytes, // no rewards yet
@@ -58,20 +58,20 @@ export fn main(
     assert future_epoch & (rewards_to_add > 0);
 
     let commitment_slot_value_hash =
-        slot_value_hash_inline(
+        slot_value_hash(
             epoch_start as Bytes,
             clawback_ph,
             rewards_to_add as Bytes,
         );
     let reward_slot_value_hash =
-        slot_value_hash_inline(
+        slot_value_hash(
             slot_epoch_time as Bytes,
             slot_next_epoch_initialized as Bytes,
             slot_total_rewards as Bytes,
         );
 
     let base_conditions = if epoch_start == slot_epoch_time {
-        let new_reward_slot_value_hash = slot_value_hash_inline(
+        let new_reward_slot_value_hash = slot_value_hash(
             slot_epoch_time as Bytes,
             slot_next_epoch_initialized as Bytes,
             (slot_total_rewards + rewards_to_add) as Bytes,
@@ -89,12 +89,12 @@ export fn main(
         // initialize slots up until slot_epoch_time
         assert !slot_next_epoch_initialized;
 
-        let new_current_reward_slot_value_hash = slot_value_hash_inline(
+        let new_current_reward_slot_value_hash = slot_value_hash(
             slot_epoch_time as Bytes,
             0x01,
             slot_total_rewards as Bytes,
         );
-        let new_committed_reward_slot_value_hash = slot_value_hash_inline(
+        let new_committed_reward_slot_value_hash = slot_value_hash(
             epoch_start as Bytes,
             0 as Bytes,
             rewards_to_add as Bytes,

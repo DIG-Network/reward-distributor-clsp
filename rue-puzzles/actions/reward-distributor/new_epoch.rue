@@ -40,7 +40,7 @@ export fn main(
         slot_is_for_next_epoch | slot_is_for_previous_epoch
     );
 
-    let reward_slot_value_hash = slot_value_hash_inline(
+    let reward_slot_value_hash = slot_value_hash(
         slot_epoch_time as Bytes,
         slot_next_epoch_initialized as Bytes,
         slot_total_rewards as Bytes,

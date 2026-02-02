@@ -51,7 +51,7 @@ export struct EntrySlotValue {
     ...shares: Int,
 }
 
-export inline fn slot_value_hash_inline(
+export fn slot_value_hash(
     first_val: Bytes,
     second_val: Bytes,
     third_val: Bytes,

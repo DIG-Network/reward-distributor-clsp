@@ -47,7 +47,7 @@ fn add_multiple_nfts(
                 tree_hash_pair(
                     tree_hash_atom(dl_root_hash),
                     if dl_metadata_rest_hash_or_null is nil {
-                        sha256(0x01)
+                        tree_hash_atom(nil)
                     } else {
                         dl_metadata_rest_hash_or_null
                     },

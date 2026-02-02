@@ -1,0 +1,110 @@
+// unstake.rue by yakuhito
+// Removes entries from the distributor, returning the underlying asset to the user.
+
+// Note: Like the stake action, this puzzle has an associated unstaking program that
+//   is set at distributor launch.
+
+import super::super::reward_distributor::*;
+import super::super::slot::*;
+
+export struct UnlockPuzzleOutput {
+    shares_to_remove: Int,
+    ...unlock_conditions: List<Condition | ReserveCreateCoin>,
+}
+type UnlockPuzzleSolution = Any;
+type UnlockPuzzle = fn(
+    ephemeral_State: Int,
+    entry_custody_puzzle_hash: Bytes32,
+    ...solution: UnlockPuzzleSolution
+) -> UnlockPuzzleOutput;
+
+export fn main(
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    MAX_SECONDS_OFFSET: Int, // at most this amount of seconds can pass since last update
+    // /\ this prevents the reward distributor from 'stealing' earned rewards while not
+    //    dropping the remove mirror tx from the mempool after each block
+    PRECISION: Int,
+    UNLOCK_PUZZLE: UnlockPuzzle,
+    Truth: RewardDistributorStateTruth,
+    {
+        payout_puzzle_hash: entry_custody_puzzle_hash,
+        initial_cumulative_payout: entry_initial_cumulative_payout,
+        shares: entry_shares,
+        ...entry_slot_data,
+    }: EntrySlotValue,
+    {
+        entry_payout_amount,
+        payout_rounding_error,
+    }: EntryPayoutInfo,
+    ...unlock_puzzle_solution: UnlockPuzzleSolution,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    let {
+        shares_to_remove,
+        unlock_conditions,
+    } = UNLOCK_PUZZLE(
+        Truth.Ephemeral_State,
+        entry_custody_puzzle_hash,
+        ...unlock_puzzle_solution,
+    );
+
+    let expected_diff1 = shares_to_remove * (Truth.State.reward_info.cumulative_payout - entry_initial_cumulative_payout);
+    let expected_diff2 = entry_payout_amount * PRECISION + payout_rounding_error;
+
+    assert (
+        expected_diff1 == expected_diff2
+    ) & (
+        payout_rounding_error > -1
+    ) & (
+        PRECISION > payout_rounding_error
+    ) & (
+        shares_to_remove <= entry_shares
+    );
+
+    let base_conditions = if shares_to_remove == entry_shares {
+        unlock_conditions
+    } else {
+        [
+            // create new entry reward slot
+            create_slot_with_hint(
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                tree_hash(EntrySlotValue {
+                    payout_puzzle_hash: entry_custody_puzzle_hash,
+                    initial_cumulative_payout: entry_initial_cumulative_payout,
+                    shares: entry_shares - shares_to_remove,
+                }),
+                entry_custody_puzzle_hash,
+            ),
+            ...unlock_conditions,
+        ]
+    };
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves - entry_payout_amount,
+            active_shares: Truth.State.active_shares - shares_to_remove,
+            reward_info: RewardInfo {
+                cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                remaining_rewards: Truth.State.reward_info.remaining_rewards + payout_rounding_error,
+            },
+            round_time_info: Truth.State.round_time_info,
+        },
+    }, [
+        // make sure the reward info is up to date
+        AssertBeforeSecondsAbsolute {
+            seconds: Truth.State.round_time_info.last_update + MAX_SECONDS_OFFSET,
+        },
+        // spend entry reward slot
+        spend_slot(
+            ENTRY_SLOT_1ST_CURRY_HASH,
+            tree_hash(entry_slot_data),
+        ),
+        // condition will be returned by the reserve
+        ReserveCreateCoin {
+            puzzle_hash: entry_custody_puzzle_hash,
+            amount: entry_payout_amount,
+            memos: [entry_custody_puzzle_hash],
+        },
+        ...base_conditions,
+    ])
+}

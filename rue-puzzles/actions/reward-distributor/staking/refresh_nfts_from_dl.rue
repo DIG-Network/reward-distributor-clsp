@@ -1,0 +1,356 @@
+// refresh_nfts_from_dl.rue by yakuhito
+// Refreshes entries of *refreshable* NFT distributors. Anyone can call this action to update any
+//   entries where one or more NFTs now have a different number of associated shares than they did
+//   when they were initially staked.
+
+// Note: This puzzle was specifically optimized for DL-based NFTs. It assumes the locking puzzle is
+//   'nfts_from_dl.clsp' and the unlocking puzzle is 'nfts.clsp'.
+
+import super::super::super::reward_distributor::*;
+import super::super::super::slot::*;
+import std::singleton::SingletonStruct;
+
+struct DlMetadataPack {
+    dl_metadata_rest_hash_or_null: Bytes32 | nil,
+    dl_metadata_updater_hash_hash: Bytes32,
+    ...dl_inner_puzzle_hash: Bytes32,
+}
+
+struct TotalsPack {
+    total_entry_payout_amount: Int,
+    total_shares_delta: Int,
+    ...total_payout_rounding_error: Int,
+}
+
+struct NftData {
+    nft_shares_delta: Int,
+    new_nft_shares: Int,
+    nft_parent_id: Bytes32,
+    nft_launcher_id: Bytes32,
+    nft_metadata_hash: Bytes32,
+    nft_metadata_updater_hash_hash: Bytes32,
+    nft_transfer_porgram_hash: Bytes32,
+    nft_owner: Bytes32,
+    ...nft_inclusion_proof: MerkleProof,
+}
+
+struct NftAndSlotData {
+    existing_slot_value: EntrySlotValue,
+    payout_info: EntryPayoutInfo,
+    nfts_total_shares_delta: Int,
+    ...nft_data: List<NftData>,
+}
+
+inline fn singleton_full_puzzle_hash(
+    SINGLETON_MOD_HASH: Bytes32,
+    LAUNCHER_PUZZLE_HASH: Bytes32,
+    launcher_id: Bytes32,
+    inner_puzzle_hash: Bytes32,
+) -> Bytes32 {
+    curry_tree_hash(SINGLETON_MOD_HASH, [
+        tree_hash((SINGLETON_MOD_HASH, (launcher_id, LAUNCHER_PUZZLE_HASH))),
+        inner_puzzle_hash,
+    ])
+}
+
+fn create_coin_1_with_hint(ph: Bytes32) -> Condition {
+    CreateCoin {
+        puzzle_hash: ph,
+        amount: 1,
+        memos: Memos { value: [ph] },
+    }
+}
+
+fn restake_nfts(
+    {
+        DL_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        NFT_OWNERSHIP_LAYER_MOD_HASH,
+        NONCE_MOD_HASH,
+        MY_P2_PUZZLE_HASH,
+        dl_root_hash,
+        ...args,
+    }: RestakeNftsArgs,
+    entry_slot : EntrySlotValue,
+    nft_data: List<NftData>,
+    remaining_shares_delta: Int,
+    conditions_so_far: List<Condition | ReserveCreateCoin>,
+) -> List<Condition | ReserveCreateCoin> {
+    if nft_data is nil {
+        assert remaining_shares_delta == 0;
+        // remaining shares delta is 0
+        conditions_so_far
+    } else {
+        inline let {
+            nft_shares_delta,
+            new_nft_shares,
+            nft_parent_id,
+            nft_launcher_id,
+            nft_metadata_hash,
+            nft_metadata_updater_hash_hash,
+            nft_transfer_porgram_hash,
+            nft_owner,
+            nft_inclusion_proof,
+        } = nft_data.first;
+
+        let new_nft_puzle_hash = curry_tree_hash(
+            NONCE_MOD_HASH,
+            [
+                tree_hash((entry_slot.payout_puzzle_hash, new_nft_shares)),
+                MY_P2_PUZZLE_HASH
+            ]
+        );
+        let delegated_puzzle_hash = tree_hash(
+            // 1 is the leading 'q . ' in the delegated puzzle
+            (1, [create_coin_1_with_hint(new_nft_puzle_hash)])
+        );
+
+        let nft_inner_puzzle_hash = curry_tree_hash(
+            NFT_STATE_LAYER_MOD_HASH,
+            [
+                tree_hash_atom(NFT_STATE_LAYER_MOD_HASH),
+                nft_metadata_hash,
+                nft_metadata_updater_hash_hash,
+                curry_tree_hash(
+                    NFT_OWNERSHIP_LAYER_MOD_HASH,
+                    [
+                        tree_hash_atom(NFT_OWNERSHIP_LAYER_MOD_HASH),
+                        tree_hash_atom(nft_owner),
+                        nft_transfer_porgram_hash,
+                        curry_tree_hash(NONCE_MOD_HASH, [
+                            tree_hash((entry_slot.payout_puzzle_hash, (new_nft_shares - nft_shares_delta))),
+                            MY_P2_PUZZLE_HASH
+                        ])
+                    ]
+                )
+            ]
+        );
+        let nft_coin_id = coinid(
+            nft_parent_id,
+            singleton_full_puzzle_hash(
+                DL_SINGLETON_STRUCT.mod_hash,
+                DL_SINGLETON_STRUCT.launcher_puzzle_hash,
+                nft_launcher_id,
+                nft_inner_puzzle_hash
+            ),
+            1,
+        );
+
+        assert (
+            nft_shares_delta != 0
+        ) & (
+            dl_root_hash == simplify_merkle_proof(
+                tree_hash((nft_launcher_id, new_nft_shares)),
+                nft_inclusion_proof,
+            )
+        );
+
+        [
+            SendMessage {
+                mode: SENDER_PUZZLE | RECEIVER_COIN,
+                message: delegated_puzzle_hash,
+                receiver: [
+                    nft_coin_id,
+                ]
+            },
+            CreatePuzzleAnnouncement {
+                message: "r" + nft_launcher_id,
+            },
+            ...restake_nfts(
+                args,
+                entry_slot,
+                nft_data.rest,
+                remaining_shares_delta - nft_shares_delta,
+                conditions_so_far,
+            )
+        ]
+    }
+}
+
+fn process_slot_and_nft_data(
+    {
+        ENTRY_SLOT_1ST_CURRY_HASH,
+        PRECISION,
+        Truth,
+        ...args,
+    }: RestakeNftsArgs,
+    nft_and_slot_data: List<NftAndSlotData>,
+    remaining_payout_amount: Int,
+    remaining_shares_delta: Int,
+    remaining_rounding_error: Int,
+) -> List<Condition | ReserveCreateCoin> {
+    if nft_and_slot_data is nil {
+        assert (
+            remaining_payout_amount == 0
+        ) & (
+            remaining_rounding_error == 0
+        );
+
+        []
+    } else {
+        inline let {
+            existing_slot_value,
+            payout_info,
+            nfts_total_shares_delta,
+            nft_data,
+        } = nft_and_slot_data.first;
+        inline let {
+            payout_puzzle_hash: entry_custody_puzzle_hash,
+            initial_cumulative_payout: existing_slot_cumulative_payout,
+            shares: existing_slot_shares,
+        } = existing_slot_value;
+        inline let {
+            entry_payout_amount,
+            payout_rounding_error,
+        } = payout_info;
+
+        let expected_val1 = (Truth.State.reward_info.cumulative_payout - existing_slot_cumulative_payout) * existing_slot_shares;
+        let expected_val2 = entry_payout_amount * PRECISION + payout_rounding_error;
+
+        assert (
+            expected_val1 == expected_val2
+        ) & (
+            payout_rounding_error > -1
+        ) & (
+            PRECISION > payout_rounding_error
+        ) & (
+            // can safely remove these shares
+            nfts_total_shares_delta <= existing_slot_shares
+        );
+
+        [
+            // consume slot
+            spend_slot(
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                tree_hash(existing_slot_value),
+            ),
+            // re-issue slot
+            create_slot_with_hint(
+                ENTRY_SLOT_1ST_CURRY_HASH,
+                tree_hash(EntrySlotValue {
+                    payout_puzzle_hash: entry_custody_puzzle_hash,
+                    initial_cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                    shares: existing_slot_shares + nfts_total_shares_delta,
+                }),
+                entry_custody_puzzle_hash,
+            ),
+            // payout - condition will be returned by the reserve
+            ReserveCreateCoin {
+                puzzle_hash: entry_custody_puzzle_hash,
+                amount: entry_payout_amount,
+                memos: [entry_custody_puzzle_hash],
+            },
+            // restake NFTs
+            ...restake_nfts(
+                args,
+                existing_slot_value,
+                nft_data,
+                nfts_total_shares_delta,
+                process_slot_and_nft_data(
+                    args,
+                    nft_and_slot_data.rest,
+                    remaining_payout_amount - entry_payout_amount,
+                    remaining_shares_delta - nfts_total_shares_delta,
+                    remaining_rounding_error - payout_rounding_error,
+                ),
+            )
+        ]
+    }
+}
+
+struct RestakeNftsArgs {
+    DL_SINGLETON_STRUCT: SingletonStruct,
+    NFT_STATE_LAYER_MOD_HASH: Bytes32,
+    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    MAX_SECONDS_OFFSET: Int, // at most this amount of seconds can pass since last update
+    // /\ this prevents the reward distributor from 'stealing' earned rewards while not
+    //    dropping the remove mirror tx from the mempool after each block
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    // dl-related data
+    dl_root_hash: Bytes32,
+    dl_metadata_pack: DlMetadataPack,
+    // totals
+    totals_pack: TotalsPack,
+    // slot and nft data
+    ...slot_and_nft_data: List<NftAndSlotData>,
+}
+
+export fn main(
+    ...{
+        DL_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        MAX_SECONDS_OFFSET,
+        Truth,
+        dl_root_hash,
+        dl_metadata_pack: {
+            dl_metadata_rest_hash_or_null,
+            dl_metadata_updater_hash_hash,
+            dl_inner_puzzle_hash,
+        },
+        totals_pack: {
+            total_entry_payout_amount,
+            total_shares_delta,
+            total_payout_rounding_error,
+        },
+        ...args,
+    }: RestakeNftsArgs,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    let dl_inner_puzzle_hash = curry_tree_hash(
+        NFT_STATE_LAYER_MOD_HASH,
+        [
+            tree_hash_atom(NFT_STATE_LAYER_MOD_HASH),
+            tree_hash_pair(
+                tree_hash_atom(dl_root_hash),
+                if dl_metadata_rest_hash_or_null is nil {
+                    tree_hash_atom(nil)
+                } else {
+                    dl_metadata_rest_hash_or_null
+                }
+            ), // metadata hash
+            dl_metadata_updater_hash_hash,
+            dl_inner_puzzle_hash,
+        ]
+    );
+    let dl_full_puzzle_hash = curry_tree_hash(
+        DL_SINGLETON_STRUCT.mod_hash,
+        [
+            tree_hash(DL_SINGLETON_STRUCT),
+            dl_inner_puzzle_hash,
+        ]
+    );
+    
+    (
+        RewardDistributorStateTruth {
+            Ephemeral_State: Truth.Ephemeral_State,
+            State: RewardDistributorState {
+                total_reserves: Truth.State.total_reserves - total_entry_payout_amount,
+                active_shares: Truth.State.active_shares + total_shares_delta,
+                reward_info: RewardInfo {
+                    cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                    remaining_rewards: Truth.State.reward_info.remaining_rewards + total_payout_rounding_error,
+                },
+                round_time_info: Truth.State.round_time_info,
+            },
+        }, [
+            // make sure the reward info is up to date
+            AssertBeforeSecondsAbsolute {
+                seconds: Truth.State.round_time_info.last_update + MAX_SECONDS_OFFSET,
+            },
+            // assert DL root hash
+            AssertPuzzleAnnouncement {
+                id: sha256(dl_full_puzzle_hash + "$"),
+            },
+            ...process_slot_and_nft_data(
+                args,
+                args.slot_and_nft_data,
+                total_entry_payout_amount,
+                total_shares_delta,
+                total_payout_rounding_error,
+            ),
+        ]
+    )
+}

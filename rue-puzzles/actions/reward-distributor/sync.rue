@@ -1,0 +1,51 @@
+// sync.rue by yakuhito
+// Syncs reward distribution for the current epoch
+
+import super::super::reward_distributor::*;
+
+export fn main(
+    Truth: RewardDistributorStateTruth,
+    ...update_time: Int,
+) -> (RewardDistributorStateTruth, List<Condition>) {
+    let update_in_epoch = update_time <= Truth.State.round_time_info.epoch_end;
+    let update_after_last = update_time > Truth.State.round_time_info.last_update;
+    
+    assert update_in_epoch & update_after_last;
+
+    let cumulative_payout_delta = if Truth.State.active_shares > 0 {
+        inline let remaining_rewards = Truth.State.reward_info.remaining_rewards;
+        inline let last_update = Truth.State.round_time_info.last_update;
+        inline let active_shares = Truth.State.active_shares;
+        inline let epoch_end = Truth.State.round_time_info.epoch_end;
+        
+        (remaining_rewards * (update_time - last_update)) / (active_shares * (epoch_end - last_update))
+    } else {
+        0
+    };
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves,
+            active_shares: Truth.State.active_shares,
+            reward_info: RewardInfo {
+                cumulative_payout: Truth.State.reward_info.cumulative_payout + cumulative_payout_delta,
+                remaining_rewards: Truth.State.reward_info.remaining_rewards - cumulative_payout_delta * Truth.State.active_shares,
+            },
+            round_time_info: RoundTimeInfo {
+                last_update: update_time,
+                epoch_end: Truth.State.round_time_info.epoch_end,
+            },
+        },
+    }, [
+        AssertSecondsAbsolute {
+            seconds: update_time,
+        },
+        CreatePuzzleAnnouncement {
+            message: "s" + tree_hash_pair(
+                tree_hash_atom(update_time as Bytes),
+                tree_hash_atom(Truth.State.round_time_info.epoch_end as Bytes),
+            ),
+        }
+    ])
+}

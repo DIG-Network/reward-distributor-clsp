@@ -1,0 +1,85 @@
+// new_epoch.rue by yakuhito
+// Starts a new epoch
+
+import super::super::reward_distributor::*;
+import super::super::slot::*;
+
+export fn main(
+    REWARD_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    FEE_PAYOUT_PUZZLE_HASH: Bytes32,
+    FEE_BPS: Int, // * epoch_total_rewards / 10000 will be given to the validator - rest is distributed to mirrors
+    EPOCH_SECONDS: Int,
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    slot_epoch_time: Int,
+    slot_next_epoch_initialized: Bool,
+    slot_total_rewards: Int,
+    epoch_total_rewards: Int,
+    ...fee: Int,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    // slot contains info about next epoch
+    let slot_is_for_next_epoch = (
+        slot_epoch_time == Truth.State.round_time_info.epoch_end
+    ) & (
+        epoch_total_rewards == slot_total_rewards
+    );
+    // slot is for previous epoch; next epoch is 0
+    let slot_is_for_previous_epoch = (
+        Truth.State.round_time_info.epoch_end > slot_epoch_time
+    ) & (
+        !slot_next_epoch_initialized
+    ) & (
+        epoch_total_rewards == 0
+    );
+
+    assert (
+        Truth.State.round_time_info.last_update == Truth.State.round_time_info.epoch_end
+    ) & (
+        fee == epoch_total_rewards * FEE_BPS / 10000
+    ) & (
+        slot_is_for_next_epoch | slot_is_for_previous_epoch
+    );
+
+    let reward_slot_value_hash = slot_value_hash(
+        slot_epoch_time,
+        slot_next_epoch_initialized,
+        slot_total_rewards,
+    );
+    let hint = tree_hash_atom(slot_epoch_time as Bytes);
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves - fee,
+            active_shares: Truth.State.active_shares,
+            reward_info: RewardInfo {
+                cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                remaining_rewards: Truth.State.reward_info.remaining_rewards + (epoch_total_rewards - fee) * PRECISION,
+            },
+            round_time_info: RoundTimeInfo {
+                last_update: Truth.State.round_time_info.epoch_end,
+                epoch_end: Truth.State.round_time_info.epoch_end + EPOCH_SECONDS,
+            },
+        },
+    }, [
+        CreatePuzzleAnnouncement {
+            message: "e" + tree_hash_atom(Truth.State.round_time_info.epoch_end as Bytes),
+        },
+        // condition will be returned by the reserve
+        ReserveCreateCoin {
+            puzzle_hash: FEE_PAYOUT_PUZZLE_HASH,
+            amount: fee,
+            memos: [FEE_PAYOUT_PUZZLE_HASH],
+        },
+        // slot "oracle" (spend to assert and re-create with same value)
+        spend_slot(
+            REWARD_SLOT_1ST_CURRY_HASH,
+            reward_slot_value_hash,
+        ),
+        create_slot_with_hint(
+            REWARD_SLOT_1ST_CURRY_HASH,
+            reward_slot_value_hash,
+            hint,
+        ),
+    ])
+}

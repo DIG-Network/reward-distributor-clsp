@@ -1,0 +1,188 @@
+// nfts_from_did.rue by yakuhito
+// Allows any NFTs minted by a preset DID to be staked. All weights are equal (1).
+
+// This is a staking puzzle - output is (new_active_shares . output_conditions).
+// Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
+
+import super::stake::LockPuzzleOutput;
+import std::offer::*;
+import std::singleton::SingletonStruct;
+
+struct OneNftProof {
+    puzzle_hash: Bytes32,
+    ...amount: Int,
+}
+struct DidProof {
+    parent_info: Bytes32,
+    inner_ph: Bytes32,
+    ...amount: Int,
+}
+type NftProof = (DidProof, List<OneNftProof>);
+
+struct NftInfo {
+    nft_metadata_hash: Bytes32,
+    nft_metadata_updater_hash_hash: Bytes32,
+    nft_owner: Bytes32,
+    nft_transfer_porgram_hash: Bytes32,
+    ...nft_launcher_proof: NftProof,
+}
+
+fn nft_lancher_id(
+    did_coin_id: Bytes32,
+    nft_proofs: List<OneNftProof>,
+) -> Bytes32 {
+    if nft_proofs is nil {
+        did_coin_id
+    } else {
+        inline let { puzzle_hash, amount } = nft_proofs.first;
+        coinid(
+            nft_lancher_id(did_coin_id, nft_proofs.rest),
+            puzzle_hash,
+            amount,
+        )
+    }
+}
+
+inline fn nft_launcher_id_stager(
+    DID_SINGLETON_STRUCT: SingletonStruct,
+    proof: NftProof,
+) -> Bytes32 {
+    inline let (did_proof, nft_proofs) = proof;
+    let did_coin_id = coinid(
+        did_proof.parent_info,
+        curry_tree_hash(DID_SINGLETON_STRUCT.mod_hash, [
+            tree_hash(DID_SINGLETON_STRUCT),
+            did_proof.inner_ph,
+        ]),
+        did_proof.amount,
+    );
+    
+    nft_lancher_id(did_coin_id, nft_proofs)
+}
+
+fn add_multiple_nfts(
+    {
+        DID_SINGLETON_STRUCT,
+        NFT_STATE_LAYER_MOD_HASH,
+        NFT_OWNERSHIP_LAYER_MOD_HASH,
+        OFFER_MOD_HASH,
+        NONCE_MOD_HASH,
+        MY_P2_PUZZLE_HASH,
+        Ephemeral_State,
+        Entry_Custody_Puzzle_Hash,
+        my_id,
+        ...args,
+    }: NftsFromDidArgs,
+    nft_infos: List<NftInfo>,
+    shares_so_far: Int,
+    conditions_so_far: List<Condition>,
+) -> LockPuzzleOutput {
+    if nft_infos is nil {
+        LockPuzzleOutput {
+            newly_locked_shares: shares_so_far,
+            locking_conditions: [
+                AssertMyCoinId {
+                    coin_id: my_id,
+                },
+                ...conditions_so_far
+            ],
+        }
+    } else {
+        inline let {
+            nft_metadata_hash,
+            nft_metadata_updater_hash_hash,
+            nft_owner,
+            nft_transfer_porgram_hash,
+            nft_launcher_proof,
+        } = nft_infos.first;
+
+        let nft_launcher_id = nft_launcher_id_stager(DID_SINGLETON_STRUCT, nft_launcher_proof);
+        let nft_inner_puzzle_hash = curry_tree_hash(
+            NFT_STATE_LAYER_MOD_HASH,
+            [
+                tree_hash_atom(NFT_STATE_LAYER_MOD_HASH),
+                nft_metadata_hash,
+                nft_metadata_updater_hash_hash,
+                curry_tree_hash(
+                    NFT_OWNERSHIP_LAYER_MOD_HASH,
+                    [
+                        tree_hash_atom(NFT_OWNERSHIP_LAYER_MOD_HASH),
+                        tree_hash_atom(nft_owner),
+                        nft_transfer_porgram_hash,
+                        OFFER_MOD_HASH,
+                    ]
+                ),
+            ]
+        );
+        let nft_puzzle_hash = curry_tree_hash(
+            DID_SINGLETON_STRUCT.mod_hash,
+            [
+                tree_hash((DID_SINGLETON_STRUCT.mod_hash, (nft_launcher_id, DID_SINGLETON_STRUCT.launcher_puzzle_hash))),
+                nft_inner_puzzle_hash,
+            ]
+        );
+
+        let target_inner_puzzle_hash = curry_tree_hash(
+            NONCE_MOD_HASH,
+            [
+                // 1 share per NFT
+                tree_hash((Entry_Custody_Puzzle_Hash, 1)),
+                MY_P2_PUZZLE_HASH,
+            ]
+        );
+
+        let offer_announcement = tree_hash(NotarizedPayment {
+            nonce: tree_hash((shares_so_far, (Ephemeral_State, my_id))),
+            payments: [Payment {
+                puzzle_hash: target_inner_puzzle_hash,
+                amount: 1,
+                memos: Memos { value: [target_inner_puzzle_hash] },
+            }],
+        });
+
+        let announcement_id = sha256(
+            nft_puzzle_hash + offer_announcement
+        );
+
+        let new_conditions_so_far = [
+            AssertPuzzleAnnouncement {
+                id: announcement_id,
+            },
+            CreatePuzzleAnnouncement {
+                message: "l" + announcement_id,
+            },
+            ...conditions_so_far,
+        ];
+        
+        add_multiple_nfts(
+            args,
+            nft_infos.rest,
+            shares_so_far + 1,
+            new_conditions_so_far,
+        )
+    }
+}
+
+struct NftsFromDidArgs {
+    DID_SINGLETON_STRUCT: SingletonStruct,
+    NFT_STATE_LAYER_MOD_HASH: Bytes32,
+    NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
+    OFFER_MOD_HASH: Bytes32,
+    NONCE_MOD_HASH: Bytes32,
+    MY_P2_PUZZLE_HASH: Bytes32,
+    Ephemeral_State: Int,
+    Entry_Custody_Puzzle_Hash: Bytes32,
+    my_id: Bytes32,
+    ...nft_infos: List<NftInfo>,
+}
+
+export fn main(
+    ...args: NftsFromDidArgs,
+) -> LockPuzzleOutput {
+    add_multiple_nfts(
+        args,
+        args.nft_infos,
+        0,
+        []
+    )
+}

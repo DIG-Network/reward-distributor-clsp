@@ -55,7 +55,13 @@
                 Ephemeral_State ; new ephemeral state
                 (c
                     (- total_reserves entry_payout_amount)
-                    Current_State_Rest
+                    (c
+                        active_shares
+                        (c
+                            (c cumulative_payout (+ remaining_rewards payout_rounding_error))
+                            Round_Time_Info
+                        )
+                    )
                 ) ; new state
             )
             (list
@@ -66,7 +72,7 @@
                 (create_slot_with_hint_inline ENTRY_SLOT_1ST_CURRY_HASH
                     (get_slot_data_hash
                         entry_payout_puzzle_hash
-                        (- cumulative_payout payout_rounding_error)
+                        cumulative_payout
                         entry_shares
                     )
                     entry_payout_puzzle_hash

@@ -1,0 +1,75 @@
+// initiate_payout_without_approval.clsp by yakuhito
+// Initiates a payout for a mirror. May be called by anyone for *any* mirror.
+
+import super::super::reward_distributor::*;
+import super::super::slot::*;
+
+export fn main(
+    // after 1st curry
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
+    // to prevent spam, payout needs to be >= PAYOUT_THRESHOLD
+    PAYOUT_THRESHOLD: Int,
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    entry_payout_amount: Int,
+    entry_payout_puzzle_hash: Bytes32,
+    payout_rounding_error: Int,
+    entry_shares: Int,
+    ...entry_initial_cumulative_payout: Int,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    let expected_diff1 = (Truth.State.reward_info.cumulative_payout - entry_initial_cumulative_payout) * entry_shares;
+    let expected_diff2 = entry_payout_amount * PRECISION + payout_rounding_error;
+
+    assert (
+        expected_diff1 == expected_diff2
+    ) & (
+        payout_rounding_error > -1
+    ) & (
+        PRECISION > payout_rounding_error
+    ) & (
+        entry_payout_amount >= PAYOUT_THRESHOLD
+    );
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves - entry_payout_amount,
+            active_shares: Truth.State.active_shares,
+            reward_info: RewardInfo {
+                cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                remaining_rewards: Truth.State.reward_info.remaining_rewards + payout_rounding_error,
+            },
+            round_time_info: Truth.State.round_time_info,
+        },
+    }, [
+        spend_slot(
+            ENTRY_SLOT_1ST_CURRY_HASH,
+            slot_value_hash(
+                entry_payout_puzzle_hash,
+                entry_initial_cumulative_payout,
+                entry_shares,
+            ),
+        ),
+        create_slot_with_hint(
+            ENTRY_SLOT_1ST_CURRY_HASH,
+            slot_value_hash(
+                entry_payout_puzzle_hash,
+                Truth.State.reward_info.cumulative_payout,
+                entry_shares,
+            ),
+            entry_payout_puzzle_hash,
+        ),
+        CreatePuzzleAnnouncement {
+            message: "p" + tree_hash_pair(
+                tree_hash_atom(entry_payout_puzzle_hash),
+                tree_hash_atom(entry_payout_amount as Bytes),
+            ),
+        },
+        // condition will be returned by the reserve
+        ReserveCreateCoin {
+            puzzle_hash: entry_payout_puzzle_hash,
+            amount: entry_payout_amount,
+            memos: [entry_payout_puzzle_hash],
+        }
+    ])
+}

@@ -1,0 +1,89 @@
+// withdraw_incentives.rue by yakuhito
+// Withdraw incentives from a future epoch
+
+import super::super::reward_distributor::*;
+import super::super::slot::*;
+
+export fn main(
+    REWARD_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    COMMITMENT_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
+    WITHDRAWAL_SHARE_BPS: Int, // / 10000 * committed_value will actually be sent to the recipient
+    Truth: RewardDistributorStateTruth,
+    reward_slot_epoch_time: Int,
+    withdrawal_share: Int,
+    clawback_ph: Bytes32,
+    committed_value: Int,
+    reward_slot_total_rewards: Int,
+    ...reward_slot_next_epoch_initialized: Bool,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    assert withdrawal_share == committed_value * WITHDRAWAL_SHARE_BPS / 10000;
+    
+    let spent_reward_slot_value_hash = slot_value_hash(
+        reward_slot_epoch_time,
+        reward_slot_next_epoch_initialized,
+        reward_slot_total_rewards,
+    );
+    let created_reward_slot_value_hash = slot_value_hash(
+        reward_slot_epoch_time,
+        reward_slot_next_epoch_initialized,
+        (reward_slot_total_rewards - withdrawal_share),
+    );
+    let created_reward_slot_hint = tree_hash_atom(reward_slot_epoch_time as Bytes);
+
+    let spent_commitment_slot_value_hash = slot_value_hash(
+        reward_slot_epoch_time,
+        clawback_ph,
+        committed_value,
+    );
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves - withdrawal_share,
+            active_shares: Truth.State.active_shares,
+            reward_info: Truth.State.reward_info,
+            round_time_info: Truth.State.round_time_info,
+        },
+    }, [
+        // this also ensures that the wihdrawal doesn't affect the current round
+        AssertBeforeSecondsAbsolute {
+            seconds: reward_slot_epoch_time,
+        },
+
+        // update epoch reward (lower total rewards)
+        spend_slot(
+            REWARD_SLOT_1ST_CURRY_HASH,
+            spent_reward_slot_value_hash,
+        ),
+        create_slot_with_hint(
+            REWARD_SLOT_1ST_CURRY_HASH,
+            created_reward_slot_value_hash,
+            created_reward_slot_hint,
+        ),
+
+        // spend commitment slot, which functions as a ticket
+        spend_slot(
+            COMMITMENT_SLOT_1ST_CURRY_HASH,
+            spent_commitment_slot_value_hash,
+        ),
+
+        // make sure the clawback owner wants to go ahead
+        ReceiveMessage {
+            mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
+            message: "w" + tree_hash_pair(
+                tree_hash_atom(reward_slot_epoch_time as Bytes),
+                tree_hash_atom(committed_value as Bytes),
+            ),
+            sender: [
+                clawback_ph,
+            ],
+        },
+
+        // condition will be returned by the reserve
+        ReserveCreateCoin {
+            puzzle_hash: clawback_ph,
+            amount: withdrawal_share,
+            memos: [clawback_ph],
+        },
+    ])
+}

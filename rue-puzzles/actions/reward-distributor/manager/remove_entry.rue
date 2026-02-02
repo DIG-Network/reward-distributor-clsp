@@ -1,0 +1,89 @@
+// remove_entry.rue by yakuhito
+// Stops rewarding a specific entry.
+
+import super::super::super::reward_distributor::*;
+import super::super::super::slot::*;
+
+export fn main(
+    SINGLETON_MOD_HASH: Bytes32,
+    MANAGER_SINGLETON_STRUCT_HASH: Bytes32, // (sha256 SINGLETON_STRUCT) for manager singleton
+    ENTRY_SLOT_1ST_CURRY_HASH: Bytes32,
+    MAX_SECONDS_OFFSET: Int, // at most this amount of seconds can pass since last update
+    // /\ this prevents the reward distributor from 'stealing' earned rewards while not
+    //    dropping the remove mirror tx from the mempool after each block
+    PRECISION: Int,
+    Truth: RewardDistributorStateTruth,
+    {
+        payout_puzzle_hash: entry_payout_puzzle_hash,
+        initial_cumulative_payout: entry_initial_cumulative_payout,
+        shares: entry_shares,
+    }: EntrySlotValue,
+    {
+        entry_payout_amount,
+        payout_rounding_error,
+    }: EntryPayoutInfo,
+    ...manager_singleton_inner_puzzle_hash: Bytes32,
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
+    let expected_diff1 = (Truth.State.reward_info.cumulative_payout - entry_initial_cumulative_payout) * entry_shares;
+    let expected_diff2 = entry_payout_amount * PRECISION + payout_rounding_error;
+
+    assert (
+        expected_diff1 == expected_diff2
+    ) & (
+        payout_rounding_error > -1
+    ) & (
+        PRECISION > payout_rounding_error
+    );
+
+    let manager_puzzle_hash = curry_tree_hash(SINGLETON_MOD_HASH, [
+        MANAGER_SINGLETON_STRUCT_HASH,
+        manager_singleton_inner_puzzle_hash,
+    ]);
+
+    (RewardDistributorStateTruth {
+        Ephemeral_State: Truth.Ephemeral_State,
+        State: RewardDistributorState {
+            total_reserves: Truth.State.total_reserves - entry_payout_amount,
+            active_shares: Truth.State.active_shares - entry_shares,
+            reward_info: RewardInfo {
+                cumulative_payout: Truth.State.reward_info.cumulative_payout,
+                remaining_rewards: Truth.State.reward_info.remaining_rewards + payout_rounding_error,
+            },
+            round_time_info: Truth.State.round_time_info,
+        },
+    }, [
+        // manager wants us to remove this entry
+        ReceiveMessage {
+            mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
+            message: "r" + tree_hash_pair(
+                tree_hash_atom(entry_payout_puzzle_hash),
+                tree_hash_atom(entry_shares as Bytes),
+            ),
+            sender: [
+                manager_puzzle_hash,
+            ],
+        },
+
+        // make sure the reward info is up to date
+        AssertBeforeSecondsAbsolute {
+            seconds: Truth.State.round_time_info.last_update + MAX_SECONDS_OFFSET,
+        },
+
+        // spend entry reward slot without recreating it
+        spend_slot(
+            ENTRY_SLOT_1ST_CURRY_HASH,
+            slot_value_hash(
+                entry_payout_puzzle_hash,
+                entry_initial_cumulative_payout,
+                entry_shares,
+            ),
+        ),
+
+        // condition will be returned by the reserve
+        ReserveCreateCoin {
+            puzzle_hash: entry_payout_puzzle_hash,
+            amount: entry_payout_amount,
+            memos: [entry_payout_puzzle_hash],
+        },
+    ])
+}

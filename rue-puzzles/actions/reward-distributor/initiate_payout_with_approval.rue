@@ -44,18 +44,18 @@ export fn main(
     }, [
         spend_slot(
             ENTRY_SLOT_1ST_CURRY_HASH,
-            slot_value_hash_inline(
+            slot_value_hash(
                 entry_payout_puzzle_hash,
-                entry_initial_cumulative_payout as Bytes,
-                entry_shares as Bytes,
+                entry_initial_cumulative_payout,
+                entry_shares,
             ),
         ),
         create_slot_with_hint(
             ENTRY_SLOT_1ST_CURRY_HASH,
-            slot_value_hash_inline(
+            slot_value_hash(
                 entry_payout_puzzle_hash,
-                Truth.State.reward_info.cumulative_payout as Bytes,
-                entry_shares as Bytes,
+                Truth.State.reward_info.cumulative_payout,
+                entry_shares,
             ),
             entry_payout_puzzle_hash,
         ),
@@ -73,7 +73,7 @@ export fn main(
         },
         // approval message contains everything 'important' about the payout
         ReceiveMessage {
-            mode: 18,
+            mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
             message: "p" + tree_hash_pair(
                 tree_hash_atom(entry_payout_amount as Bytes),
                 tree_hash_atom(payout_rounding_error as Bytes),

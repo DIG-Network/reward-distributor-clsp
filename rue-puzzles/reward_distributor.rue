@@ -24,8 +24,8 @@ export struct RewardDistributorStateTruth {
 }
 
 export struct ReserveCreateCoin {
-    opcode: Int = -42,
-    condition_opcode: Int = 51,
+    opcode = -42,
+    condition_opcode = 51,
     puzzle_hash: Bytes32,
     amount: Int,
     memos: List<Bytes32>,
@@ -51,16 +51,16 @@ export struct EntrySlotValue {
     ...shares: Int,
 }
 
-export inline fn slot_value_hash_inline(
-    first_val: Bytes,
-    second_val: Bytes,
-    third_val: Bytes,
+export fn slot_value_hash(
+    first_val: Atom,
+    second_val: Atom,
+    third_val: Atom,
 ) -> Bytes32 {
     tree_hash_pair(
-        tree_hash_atom(first_val),
+        tree_hash_atom(first_val as Bytes),
         tree_hash_pair(
-            tree_hash_atom(second_val),
-            tree_hash_atom(third_val),
+            tree_hash_atom(second_val as Bytes),
+            tree_hash_atom(third_val as Bytes),
         )
     )
 }
@@ -68,10 +68,4 @@ export inline fn slot_value_hash_inline(
 export struct EntryPayoutInfo {
     entry_payout_amount: Int,
     ...payout_rounding_error: Int,
-}
-
-export struct SingletonStruct {
-    singleton_mod_hash: Bytes32,
-    launcher_id: Bytes32,
-    ...launcher_puzzle_hash: Bytes32,
 }

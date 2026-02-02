@@ -5,19 +5,13 @@
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
 import super::stake::LockPuzzleOutput;
+import std::offer::*;
 
 export type CatMakerSolution = Any;
 export type CatMaker = fn(
     inner_puzzle_hash: Bytes32,
     ...solution: CatMakerSolution,
 ) -> Bytes32;
-
-export inline fn notarize_payment(
-    ph: Bytes32,
-    amount: Int,
-) -> List<Any> {
-    [ph, amount, [ph]]
-}
 
 export fn main(
     CAT_MAKER: CatMaker,
@@ -33,6 +27,7 @@ export fn main(
     let offer_cat_full_puzzle_hash = CAT_MAKER(
         OFFER_MOD_HASH, ...cat_maker_solution
     );
+
     let cat_destination_puzzle_hash = curry_tree_hash(
         NONCE_MOD_HASH,
         [
@@ -40,21 +35,20 @@ export fn main(
             MY_P2_PUZZLE_HASH
         ]
     );
-    let offer_announcement = tree_hash(
-        (
-            tree_hash((Ephemeral_State, my_id)), // nonce
-            (
-                notarize_payment(
-                    cat_destination_puzzle_hash,
-                    cat_amount
-                ),
-                nil
-            )
-        )
-    );
+
+    let offer_announcement = tree_hash(NotarizedPayment {
+        nonce: tree_hash((Ephemeral_State, my_id)),
+        payments: [Payment {
+            puzzle_hash: cat_destination_puzzle_hash,
+            amount: cat_amount,
+            memos: Memos { value: [cat_destination_puzzle_hash] },
+        }],
+    });
+
     let announcement_id = sha256(
         offer_cat_full_puzzle_hash + offer_announcement
     );
+    
     LockPuzzleOutput {
         newly_locked_shares: cat_amount,
         locking_conditions: [

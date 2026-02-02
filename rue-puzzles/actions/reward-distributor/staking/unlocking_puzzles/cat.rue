@@ -52,13 +52,13 @@ export fn main(
         unlock_conditions: [
             // unlock locked CAT coin
             SendMessage {
-                mode: 23, // sender puzzle hash, receiver coin id
+                mode: SENDER_PUZZLE | RECEIVER_COIN,
                 message: delegated_puzzle_hash,
                 receiver: [locked_cat_id],
             },
             // only owner can unlock
             ReceiveMessage {
-                mode: 18, // puzzle-puzzle
+                mode: SENDER_PUZZLE | RECEIVER_PUZZLE,
                 message: "u" + cat_parent_id,
                 sender: [Entry_Custody_Puzzle_Hash],
             },

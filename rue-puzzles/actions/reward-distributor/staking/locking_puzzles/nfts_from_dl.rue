@@ -4,9 +4,9 @@
 // This is a staking puzzle - output is (new_active_shares . output_conditions).
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
-import super::super::reward_distributor::*;
 import super::stake::LockPuzzleOutput;
-import cat::notarize_payment;
+import std::offer::*;
+import std::singleton::SingletonStruct;
 
 struct NftInfo {
     nft_launcher_id: Bytes32,
@@ -47,7 +47,7 @@ fn add_multiple_nfts(
                 tree_hash_pair(
                     tree_hash_atom(dl_root_hash),
                     if dl_metadata_rest_hash_or_null is nil {
-                        sha256(0x01)
+                        tree_hash_atom(nil)
                     } else {
                         dl_metadata_rest_hash_or_null
                     },
@@ -57,7 +57,7 @@ fn add_multiple_nfts(
             ]
         );
         let dl_full_puzzle_hash = curry_tree_hash(
-            DID_SINGLETON_STRUCT.singleton_mod_hash,
+            DID_SINGLETON_STRUCT.mod_hash,
             [
                 tree_hash(DID_SINGLETON_STRUCT),
                 dl_inner_puzzle_hash,
@@ -81,7 +81,7 @@ fn add_multiple_nfts(
             ],
         }
     } else {
-        let {
+        inline let {
             nft_launcher_id,
             nft_metadata_hash,
             nft_metadata_updater_hash_hash,
@@ -109,9 +109,9 @@ fn add_multiple_nfts(
             ]
         );
         let nft_puzzle_hash = curry_tree_hash(
-            DID_SINGLETON_STRUCT.singleton_mod_hash,
+            DID_SINGLETON_STRUCT.mod_hash,
             [
-                tree_hash((DID_SINGLETON_STRUCT.singleton_mod_hash, (nft_launcher_id, DID_SINGLETON_STRUCT.launcher_puzzle_hash))),
+                tree_hash((DID_SINGLETON_STRUCT.mod_hash, (nft_launcher_id, DID_SINGLETON_STRUCT.launcher_puzzle_hash))),
                 nft_inner_puzzle_hash,
             ]
         );
@@ -124,14 +124,15 @@ fn add_multiple_nfts(
                 MY_P2_PUZZLE_HASH,
             ]
         );
-        let offer_announcement = tree_hash((
-            // nonce
-            tree_hash((shares_so_far, (Ephemeral_State, my_id))),
-            (
-                notarize_payment(target_inner_puzzle_hash, 1),
-                nil
-            )
-        ));
+
+        let offer_announcement = tree_hash(NotarizedPayment {
+            nonce: tree_hash((shares_so_far, (Ephemeral_State, my_id))),
+            payments: [Payment {
+                puzzle_hash: target_inner_puzzle_hash,
+                amount: 1,
+                memos: Memos { value: [target_inner_puzzle_hash] },
+            }],
+        });
 
         let announcement_id = sha256(
             nft_puzzle_hash + offer_announcement

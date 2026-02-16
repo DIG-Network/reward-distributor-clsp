@@ -30,15 +30,17 @@ struct NftInfo {
 fn nft_lancher_id(
     did_coin_id: Bytes32,
     nft_proofs: List<OneNftProof>,
+    after_launcher: Bool,
 ) -> Bytes32 {
     if nft_proofs is nil {
         did_coin_id
     } else {
         inline let { puzzle_hash, amount } = nft_proofs.first;
+        
         coinid(
-            nft_lancher_id(did_coin_id, nft_proofs.rest),
+            nft_lancher_id(did_coin_id, nft_proofs.rest, true),
             puzzle_hash,
-            amount,
+            inline if after_launcher & (amount % 2 != 0) { -1 } else { amount },
         )
     }
 }
@@ -57,7 +59,7 @@ inline fn nft_launcher_id_stager(
         did_proof.amount,
     );
     
-    nft_lancher_id(did_coin_id, nft_proofs)
+    nft_lancher_id(did_coin_id, nft_proofs, false)
 }
 
 fn add_multiple_nfts(

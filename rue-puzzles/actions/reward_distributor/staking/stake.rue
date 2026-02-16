@@ -15,8 +15,8 @@
 //   all stakers later (they're moved to remaining_rewards).
 
 
-import super::super::reward_distributor::*;
-import super::super::slot::*;
+import super::super::super::reward_distributor::*;
+import super::super::super::slot::*;
 
 export struct LockPuzzleOutput {
     newly_locked_shares: Int,

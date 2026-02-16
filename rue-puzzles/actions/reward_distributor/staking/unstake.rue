@@ -4,8 +4,8 @@
 // Note: Like the stake action, this puzzle has an associated unstaking program that
 //   is set at distributor launch.
 
-import super::super::reward_distributor::*;
-import super::super::slot::*;
+import super::super::super::reward_distributor::*;
+import super::super::super::slot::*;
 
 export struct UnlockPuzzleOutput {
     shares_to_remove: Int,

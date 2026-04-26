@@ -47,8 +47,8 @@
                     (concat 'i'
                         (sha256 2 
                             (sha256 1 amount)
-                            (sha256 1 epoch_end)
-                        ) ; (sha256tree (amount . epoch_end))
+                            (sha256 1 last_update)
+                        ) ; (sha256tree (amount . last_update))
                     ) 
                 )
                 ; condition prepended with -42 -> condition will be returned by the reserve

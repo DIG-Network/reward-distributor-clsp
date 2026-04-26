@@ -30,7 +30,7 @@ export fn main(
         CreatePuzzleAnnouncement {
             message: "i" + tree_hash_pair(
                 tree_hash_atom(amount as Bytes),
-                tree_hash_atom(Truth.State.round_time_info.epoch_end as Bytes),
+                tree_hash_atom(Truth.State.round_time_info.last_update as Bytes),
             ),
         },
         // condition will be returned by the reserve

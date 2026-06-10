@@ -271,8 +271,8 @@
                 (x)
             )
             ; else
-            ; both need to be 0 for the output list to be valid
-            (any remaining_payout_amount remaining_rounding_error)
+            ; all need to be 0 for the output list to be valid
+            (any remaining_payout_amount remaining_rounding_error remaining_nfts_shares_delta)
         )
     )
 

@@ -184,6 +184,8 @@ fn process_slot_and_nft_data(
             remaining_payout_amount == 0
         ) & (
             remaining_rounding_error == 0
+        ) & (
+            remaining_shares_delta == 0
         );
 
         []

@@ -65,6 +65,8 @@ export fn slot_value_hash(
     )
 }
 
+// used to hash the last 3 values in a 4-value slot (the ones with counters)
+// or the full value of a 3-value slot (commitment slots)
 export fn slot_value_hash_part(
     first_val: Atom,
     second_val: Atom,

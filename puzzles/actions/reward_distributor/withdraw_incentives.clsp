@@ -29,7 +29,8 @@
                 (sha256 1 second)
                 (sha256 1 third)
             )
-        ) ; e.g., (sha256tree (epoch_time next_epoch_time . total_rewards))
+        ) ; e.g., (sha256tree (epoch_start clawback_ph  . rewards))
+        ; or last 3 values in a 4-value slot (the ones with counters)
     )
     
     (c

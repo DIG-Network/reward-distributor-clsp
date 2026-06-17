@@ -85,7 +85,8 @@
                         (list FEE_PAYOUT_PUZZLE_HASH)
                     )
                     (slot_oracle REWARD_SLOT_1ST_CURRY_HASH
-                        slot_counter
+                        slot_counter ; function will calculate full value hash by prepending this value
+                        ; (or the value + 1) to the partial treehash below
                         (sha256 2
                             (sha256 1 slot_epoch_time)
                             (sha256 2

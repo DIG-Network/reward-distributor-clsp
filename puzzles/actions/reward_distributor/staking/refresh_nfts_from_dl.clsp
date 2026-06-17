@@ -39,6 +39,7 @@
 
     slot_and_nft_data
     ; (@ existing_slot_value (
+    ;     slot_counter
     ;     entry_custody_puzzle_hash 
     ;     existing_slot_cumulative_payout .
     ;     existing_slot_shares
@@ -81,6 +82,7 @@
             dl_root_hash ; partial solution
         ))
         (@ existing_slot_value (
+            slot_counter
             entry_custody_puzzle_hash 
             existing_slot_cumulative_payout .
             existing_slot_shares
@@ -201,6 +203,7 @@
         (@ nft_and_slot_data (
             (   
                 (@ existing_slot_value (
+                    slot_counter
                     entry_custody_puzzle_hash 
                     existing_slot_cumulative_payout .
                     existing_slot_shares
@@ -233,14 +236,17 @@
                         ; re-issue slot
                         (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
                             (sha256tree
-                                (c 
-                                    entry_custody_puzzle_hash
-                                    (c
-                                        cumulative_payout
-                                        (+ existing_slot_shares nfts_total_shares_delta)
+                                (c
+                                    (+ slot_counter 1)
+                                    (c 
+                                        entry_custody_puzzle_hash
+                                        (c
+                                            cumulative_payout
+                                            (+ existing_slot_shares nfts_total_shares_delta)
+                                        )
                                     )
                                 )
-                            ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                            ) ; slot value = (counter payout_puzzle_hash initial_cumulative_payout . shares)
                             entry_custody_puzzle_hash
                         )
                         (c

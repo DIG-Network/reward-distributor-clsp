@@ -24,7 +24,7 @@
         )
     ) ; Truth
     ; solution
-    (entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares) ; entry slot data
+    (slot_counter entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares) ; entry slot data
     (entry_payout_amount . payout_rounding_error) . ; payout info
     unlock_puzzle_solution
 ))
@@ -51,7 +51,7 @@
                     )
                 )
             )
-            (@ entry_slot_data (entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares)) ; entry slot data
+            (@ entry_slot_data (slot_counter entry_custody_puzzle_hash entry_initial_cumulative_payout . entry_shares)) ; entry slot data
             (entry_payout_amount . payout_rounding_error) . ; payout info
             unlock_puzzle_solution
         ) ; curried_args_and_solution
@@ -104,14 +104,17 @@
                                     ; create new entry reward slot
                                     (create_slot_with_hint ENTRY_SLOT_1ST_CURRY_HASH
                                         (sha256tree
-                                            (c 
-                                                entry_custody_puzzle_hash
-                                                (c
-                                                    entry_initial_cumulative_payout
-                                                    (- entry_shares shares_to_remove)
+                                            (c
+                                                (+ slot_counter 1)
+                                                (c 
+                                                    entry_custody_puzzle_hash
+                                                    (c
+                                                        entry_initial_cumulative_payout
+                                                        (- entry_shares shares_to_remove)
+                                                    )
                                                 )
                                             )
-                                        ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                                        ) ; slot value = (counter payout_puzzle_hash initial_cumulative_payout . shares)
                                         entry_custody_puzzle_hash
                                     )
                                     unlock_conditions

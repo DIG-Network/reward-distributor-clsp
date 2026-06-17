@@ -19,6 +19,7 @@
         ) ; truth
     )
     ; solution
+    slot_counter
     slot_epoch_time
     slot_next_epoch_initialized
     slot_total_rewards
@@ -29,10 +30,17 @@
     (include curry.clib)
     (include slots.clib)
 
-    (defun-inline slot_oracle (SLOT_1ST_CURRY_HASH slot_value_hash hint)
+    (defun-inline slot_oracle (SLOT_1ST_CURRY_HASH slot_counter slot_value_hash_part hint)
         (list
-            (spend_slot_inline SLOT_1ST_CURRY_HASH slot_value_hash)
-            (create_slot_with_hint_inline SLOT_1ST_CURRY_HASH slot_value_hash hint)
+            (spend_slot_inline
+                SLOT_1ST_CURRY_HASH
+                (sha256 2 (sha256 1 slot_counter) slot_value_hash_part)
+            )
+            (create_slot_with_hint_inline
+                SLOT_1ST_CURRY_HASH
+                (sha256 2 (sha256 1 (+ slot_counter 1)) slot_value_hash_part)
+                hint
+            )
         )
     )
 
@@ -77,6 +85,7 @@
                         (list FEE_PAYOUT_PUZZLE_HASH)
                     )
                     (slot_oracle REWARD_SLOT_1ST_CURRY_HASH
+                        slot_counter
                         (sha256 2
                             (sha256 1 slot_epoch_time)
                             (sha256 2

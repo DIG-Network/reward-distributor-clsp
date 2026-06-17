@@ -11,6 +11,7 @@ export fn main(
     EPOCH_SECONDS: Int,
     PRECISION: Int,
     Truth: RewardDistributorStateTruth,
+    slot_counter: Int,
     slot_epoch_time: Int,
     slot_next_epoch_initialized: Bool,
     slot_total_rewards: Int,
@@ -40,7 +41,7 @@ export fn main(
         slot_is_for_next_epoch | slot_is_for_previous_epoch
     );
 
-    let reward_slot_value_hash = slot_value_hash(
+    let reward_slot_value_hash_part = slot_value_hash_part(
         slot_epoch_time,
         slot_next_epoch_initialized,
         slot_total_rewards,
@@ -74,11 +75,17 @@ export fn main(
         // slot "oracle" (spend to assert and re-create with same value)
         spend_slot(
             REWARD_SLOT_1ST_CURRY_HASH,
-            reward_slot_value_hash,
+            tree_hash_pair(
+                tree_hash_atom(slot_counter as Bytes),
+                reward_slot_value_hash_part
+            ),
         ),
         create_slot_with_hint(
             REWARD_SLOT_1ST_CURRY_HASH,
-            reward_slot_value_hash,
+            tree_hash_pair(
+                tree_hash_atom((slot_counter + 1) as Bytes),
+                reward_slot_value_hash_part
+            ),
             hint,
         ),
     ])

@@ -23,6 +23,7 @@
     ) ; Truth
     ; solution
     (
+        slot_counter
         entry_payout_puzzle_hash
         entry_initial_cumulative_payout .
         entry_shares
@@ -77,12 +78,15 @@
                 ; spend entry reward slot without recreating it
                 (spend_slot_inline ENTRY_SLOT_1ST_CURRY_HASH
                     (sha256 2
-                        (sha256 1 entry_payout_puzzle_hash)
+                        (sha256 1 slot_counter)
                         (sha256 2
-                            (sha256 1 entry_initial_cumulative_payout)
-                            (sha256 1 entry_shares)
+                            (sha256 1 entry_payout_puzzle_hash)
+                            (sha256 2
+                                (sha256 1 entry_initial_cumulative_payout)
+                                (sha256 1 entry_shares)
+                            )
                         )
-                    ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                    ) ; slot value = (counter payout_puzzle_hash initial_cumulative_payout . shares)
                 )
 
                 ; leading -42 -> condition will be returned by the reserve

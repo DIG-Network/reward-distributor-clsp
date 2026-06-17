@@ -19,6 +19,7 @@ export fn initialize_empty_slots(
             create_slot_with_hint(
                 REWARD_SLOT_1ST_CURRY_HASH,
                 slot_value_hash(
+                    0,
                     start_epoch_time,
                     1, // next epoch is initialized
                     0, // no rewards yet
@@ -40,12 +41,13 @@ export fn main(
     COMMITMENT_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
     EPOCH_SECONDS: Int,
     Truth: RewardDistributorStateTruth,
-    // The first 3 values are data stored in a slot that's proved to exist. This slot either:
+    // The first 4 values are data stored in a slot that's proved to exist. This slot either:
     //   - represents the epoch rewards are added to (if that slot is initialized)
     //   - represents the 'end' of the epoch list - i.e., the last initialized slot with
     //     an epoch start time *before* epoch_start; this way, the distributor knows to
     //     initialize all slots in between, as well as the slot for the epoch incentives
     //     are committed to
+    slot_counter: Int,
     slot_epoch_time: Int,
     slot_next_epoch_initialized: Bool,
     slot_total_rewards: Int,
@@ -58,13 +60,14 @@ export fn main(
     assert future_epoch & (rewards_to_add > 0);
 
     let commitment_slot_value_hash =
-        slot_value_hash(
+        slot_value_hash_part(
             epoch_start,
             clawback_ph,
             rewards_to_add,
         );
     let reward_slot_value_hash =
         slot_value_hash(
+            slot_counter,
             slot_epoch_time,
             slot_next_epoch_initialized,
             slot_total_rewards,
@@ -72,6 +75,7 @@ export fn main(
 
     let base_conditions = if epoch_start == slot_epoch_time {
         let new_reward_slot_value_hash = slot_value_hash(
+            slot_counter + 1,
             slot_epoch_time,
             slot_next_epoch_initialized,
             slot_total_rewards + rewards_to_add,
@@ -90,11 +94,13 @@ export fn main(
         assert !slot_next_epoch_initialized;
 
         let new_current_reward_slot_value_hash = slot_value_hash(
+            slot_counter + 1,
             slot_epoch_time,
             1,
             slot_total_rewards,
         );
         let new_committed_reward_slot_value_hash = slot_value_hash(
+            0,
             epoch_start,
             0,
             rewards_to_add,

@@ -11,6 +11,7 @@ export fn main(
     PAYOUT_THRESHOLD: Int,
     PRECISION: Int,
     Truth: RewardDistributorStateTruth,
+    slot_counter: Int,
     entry_payout_amount: Int,
     entry_payout_puzzle_hash: Bytes32,
     payout_rounding_error: Int,
@@ -45,6 +46,7 @@ export fn main(
         spend_slot(
             ENTRY_SLOT_1ST_CURRY_HASH,
             slot_value_hash(
+                slot_counter,
                 entry_payout_puzzle_hash,
                 entry_initial_cumulative_payout,
                 entry_shares,
@@ -53,6 +55,7 @@ export fn main(
         create_slot_with_hint(
             ENTRY_SLOT_1ST_CURRY_HASH,
             slot_value_hash(
+                slot_counter + 1,
                 entry_payout_puzzle_hash,
                 Truth.State.reward_info.cumulative_payout,
                 entry_shares,

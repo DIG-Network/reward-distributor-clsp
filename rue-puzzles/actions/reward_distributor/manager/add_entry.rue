@@ -45,6 +45,7 @@ export fn main(
         create_slot_with_hint(
             ENTRY_SLOT_1ST_CURRY_HASH,
             slot_value_hash(
+                0,
                 entry_payout_puzzle_hash,
                 Truth.State.reward_info.cumulative_payout,
                 entry_shares,

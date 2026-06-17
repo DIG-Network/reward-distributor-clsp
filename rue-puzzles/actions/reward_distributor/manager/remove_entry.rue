@@ -14,6 +14,7 @@ export fn main(
     PRECISION: Int,
     Truth: RewardDistributorStateTruth,
     {
+        counter: slot_counter,
         payout_puzzle_hash: entry_payout_puzzle_hash,
         initial_cumulative_payout: entry_initial_cumulative_payout,
         shares: entry_shares,
@@ -73,6 +74,7 @@ export fn main(
         spend_slot(
             ENTRY_SLOT_1ST_CURRY_HASH,
             slot_value_hash(
+                slot_counter,
                 entry_payout_puzzle_hash,
                 entry_initial_cumulative_payout,
                 entry_shares,

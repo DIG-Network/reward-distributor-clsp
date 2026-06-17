@@ -9,6 +9,7 @@ export fn main(
     COMMITMENT_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
     WITHDRAWAL_SHARE_BPS: Int, // / 10000 * committed_value will actually be sent to the recipient
     Truth: RewardDistributorStateTruth,
+    reward_slot_counter: Int,
     reward_slot_epoch_time: Int,
     withdrawal_share: Int,
     clawback_ph: Bytes32,
@@ -19,18 +20,20 @@ export fn main(
     assert withdrawal_share == committed_value * WITHDRAWAL_SHARE_BPS / 10000;
     
     let spent_reward_slot_value_hash = slot_value_hash(
+        reward_slot_counter,
         reward_slot_epoch_time,
         reward_slot_next_epoch_initialized,
         reward_slot_total_rewards,
     );
     let created_reward_slot_value_hash = slot_value_hash(
+        reward_slot_counter + 1,
         reward_slot_epoch_time,
         reward_slot_next_epoch_initialized,
         (reward_slot_total_rewards - withdrawal_share),
     );
     let created_reward_slot_hint = tree_hash_atom(reward_slot_epoch_time as Bytes);
 
-    let spent_commitment_slot_value_hash = slot_value_hash(
+    let spent_commitment_slot_value_hash = slot_value_hash_part(
         reward_slot_epoch_time,
         clawback_ph,
         committed_value,

@@ -56,12 +56,15 @@
 
             (create_slot_with_hint_inline ENTRY_SLOT_1ST_CURRY_HASH
                 (sha256 2
-                    (sha256 1 entry_payout_puzzle_hash)
+                    (sha256 1 0)
                     (sha256 2
-                        (sha256 1 cumulative_payout)
-                        (sha256 1 entry_shares)
-                    )
-                ) ; slot value = (payout_puzzle_hash initial_cumulative_payout . shares)
+                        (sha256 1 entry_payout_puzzle_hash)
+                        (sha256 2
+                            (sha256 1 cumulative_payout)
+                            (sha256 1 entry_shares)
+                        )
+                    ) 
+                ) ; slot value = (counter payout_puzzle_hash initial_cumulative_payout . shares)
                 entry_payout_puzzle_hash
             )
 

@@ -34,6 +34,7 @@ export fn main(
     Truth: RewardDistributorStateTruth,
     lock_puzzle_solution: LockPuzzleSolution,
     ...{
+        counter: slot_counter,
         payout_puzzle_hash: entry_custody_puzzle_hash,
         initial_cumulative_payout: existing_slot_cumulative_payout,
         shares: existing_slot_shares,
@@ -54,12 +55,13 @@ export fn main(
         existing_slot_shares * (Truth.State.reward_info.cumulative_payout - existing_slot_cumulative_payout);
 
     let created_slot_value_hash = tree_hash(EntrySlotValue {
+        counter: slot_counter + 1,
         payout_puzzle_hash: entry_custody_puzzle_hash,
         initial_cumulative_payout: Truth.State.reward_info.cumulative_payout,
         shares: existing_slot_shares + newly_locked_shares,
     });
 
-    let base_conditions = if existing_slot_cumulative_payout > -1 {
+    let base_conditions = if slot_counter > -1 {
         [
             // receive message that giving up rewards is ok
             ReceiveMessage {
@@ -77,7 +79,7 @@ export fn main(
             ...locking_conditions,
         ]
     } else {
-        assert existing_slot_shares == 0;
+        assert (existing_slot_shares == 0) & (existing_slot_cumulative_payout == 0);
         locking_conditions
     };
 

@@ -66,6 +66,9 @@ fn remove_nfts(
                     puzzle_hash: Entry_Custody_Puzzle_Hash,
                     amount: 1,
                     memos: Memos { value: [Entry_Custody_Puzzle_Hash] },
+                },
+                AssertHeightRelative {
+                    height: 0,
                 }
             ])
         );

@@ -26,6 +26,9 @@ export fn main(
                 puzzle_hash: Entry_Custody_Puzzle_Hash,
                 amount: cat_amount,
                 memos: Memos { value: [Entry_Custody_Puzzle_Hash] },
+            },
+            AssertHeightRelative {
+                height: 0,
             }
         ])
     );

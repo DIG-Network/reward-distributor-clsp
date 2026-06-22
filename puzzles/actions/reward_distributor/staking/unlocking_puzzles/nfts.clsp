@@ -63,6 +63,7 @@
                                     1
                                     (list Entry_Custody_Puzzle_Hash)
                                 )
+                                (list ASSERT_HEIGHT_RELATIVE 0)
                             )
                         )) ; message = delegated puzzle hash
                         (coinid

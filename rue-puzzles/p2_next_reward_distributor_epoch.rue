@@ -15,7 +15,7 @@ import reward_distributor::slot_value_hash_part;
 export fn main(
     SINGLETON_MOD_HASH: Bytes32,
     NONCE_MOD_HASH: Bytes32,
-    CLAWBACK_INNER_PUZZLE_HASH_HASH: Bytes32, // (sha256 1 clawback_puzzle)
+    CLAWBACK_INNER_PUZZLE_HASH: Bytes32, // (sha256tree clawback_puzzle)
     REWARD_DISTRIBUTOR_SINGLETON_STRUCT_HASH: Bytes32, // (sha256tree REWARD_DISTRIBUTOR_SINGLETON_STRUCT)
     REWARD_DISTRIBUTOR_FIRST_EPOCH_START: Int,
     REWARD_DISTRIBUTOR_EPOCH_SECONDS: Int,
@@ -33,7 +33,7 @@ export fn main(
 
     let clawback_puzzle_hash = curry_tree_hash(NONCE_MOD_HASH, [
         tree_hash_atom(my_id),
-        CLAWBACK_INNER_PUZZLE_HASH_HASH
+        CLAWBACK_INNER_PUZZLE_HASH
     ]);
 
     let commitment_slot_value_hash = slot_value_hash_part(

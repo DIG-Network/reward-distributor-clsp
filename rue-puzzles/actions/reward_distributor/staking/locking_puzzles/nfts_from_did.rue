@@ -8,7 +8,7 @@ import super::stake::LockPuzzleOutput;
 import std::offer::*;
 import std::singleton::SingletonStruct;
 
-struct OneNftProof {
+struct IntermediaryCoinProof {
     puzzle_hash: Bytes32,
     ...amount: Int,
 }
@@ -17,7 +17,7 @@ struct DidProof {
     inner_ph: Bytes32,
     ...amount: Int,
 }
-type NftProof = (DidProof, List<OneNftProof>);
+type NftProof = (DidProof, List<IntermediaryCoinProof>);
 
 struct NftInfo {
     nft_metadata_hash: Bytes32,
@@ -29,16 +29,16 @@ struct NftInfo {
 
 fn nft_lancher_id(
     did_coin_id: Bytes32,
-    nft_proofs: List<OneNftProof>,
+    intermediary_coin_proofs: List<IntermediaryCoinProof>,
     after_launcher: Bool,
 ) -> Bytes32 {
-    if nft_proofs is nil {
+    if intermediary_coin_proofs is nil {
         did_coin_id
     } else {
-        inline let { puzzle_hash, amount } = nft_proofs.first;
+        inline let { puzzle_hash, amount } = intermediary_coin_proofs.first;
         
         coinid(
-            nft_lancher_id(did_coin_id, nft_proofs.rest, true),
+            nft_lancher_id(did_coin_id, intermediary_coin_proofs.rest, true),
             puzzle_hash,
             inline if after_launcher & (amount % 2 != 0) { -1 } else { amount },
         )

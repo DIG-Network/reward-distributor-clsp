@@ -11,14 +11,13 @@ export fn main(
     Truth: RewardDistributorStateTruth,
     reward_slot_counter: Int,
     reward_slot_epoch_time: Int,
-    withdrawal_share: Int,
     clawback_ph: Bytes32,
     committed_value: Int,
     reward_slot_total_rewards: Int,
     ...reward_slot_next_epoch_initialized: Bool,
-) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
-    assert withdrawal_share == committed_value * WITHDRAWAL_SHARE_BPS / 10000;
-    
+) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {    
+    let withdrawal_share = committed_value * WITHDRAWAL_SHARE_BPS / 10000;
+
     let spent_reward_slot_value_hash = slot_value_hash(
         reward_slot_counter,
         reward_slot_epoch_time,

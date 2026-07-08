@@ -24,7 +24,7 @@
     slot_next_epoch_initialized
     slot_total_rewards
     epoch_total_rewards .
-    fee
+    fee ; note: this is more efficient to include here than calculate in the body, unlike the Rue puzzles
 )
     (include condition_codes.clib)
     (include curry.clib)

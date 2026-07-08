@@ -12,7 +12,7 @@
     ; solution
     reward_slot_counter
     reward_slot_epoch_time
-    withdrawal_share
+    withdrawal_share ; note: in the Rue puzzles, this is calculated directly instead of being checked
     clawback_ph
     committed_value
     reward_slot_total_rewards .

@@ -31,6 +31,7 @@ fn nft_lancher_id(
     did_coin_id: Bytes32,
     intermediary_coin_proofs: List<IntermediaryCoinProof>,
     after_launcher: Bool,
+    launcher_puzzle_hash: Bytes32,
 ) -> Bytes32 {
     if intermediary_coin_proofs is nil {
         did_coin_id
@@ -38,9 +39,9 @@ fn nft_lancher_id(
         inline let { puzzle_hash, amount } = intermediary_coin_proofs.first;
         
         coinid(
-            nft_lancher_id(did_coin_id, intermediary_coin_proofs.rest, true),
+            nft_lancher_id(did_coin_id, intermediary_coin_proofs.rest, true, launcher_puzzle_hash),
             puzzle_hash,
-            inline if after_launcher & (amount % 2 != 0) { -1 } else { amount },
+            inline if (after_launcher) & (puzzle_hash == launcher_puzzle_hash) { -1 } else { amount },
         )
     }
 }
@@ -59,7 +60,7 @@ inline fn nft_launcher_id_stager(
         did_proof.amount,
     );
     
-    nft_lancher_id(did_coin_id, nft_proofs, false)
+    nft_lancher_id(did_coin_id, nft_proofs, false, DID_SINGLETON_STRUCT.launcher_puzzle_hash)
 }
 
 fn add_multiple_nfts(

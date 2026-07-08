@@ -15,8 +15,7 @@ export fn main(
     slot_epoch_time: Int,
     slot_next_epoch_initialized: Bool,
     slot_total_rewards: Int,
-    epoch_total_rewards: Int,
-    ...fee: Int,
+    ...epoch_total_rewards: Int,
 ) -> (RewardDistributorStateTruth, List<Condition | ReserveCreateCoin>) {
     // slot contains info about next epoch
     let slot_is_for_next_epoch = (
@@ -33,10 +32,9 @@ export fn main(
         epoch_total_rewards == 0
     );
 
+    let fee = epoch_total_rewards * FEE_BPS / 10000;
     assert (
         Truth.State.round_time_info.last_update == Truth.State.round_time_info.epoch_end
-    ) & (
-        fee == epoch_total_rewards * FEE_BPS / 10000
     ) & (
         slot_is_for_next_epoch | slot_is_for_previous_epoch
     );

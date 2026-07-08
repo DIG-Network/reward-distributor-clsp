@@ -24,12 +24,12 @@
         (list ph 1 (list ph))
     )
 
-    (defun nft_lancher_id (did_coin_id (@ nft_launcher_proof ((proof_puzzle_hash . proof_amount) . nft_launcher_proof_rest)) after_launcher)
+    (defun nft_lancher_id (did_coin_id (@ nft_launcher_proof ((proof_puzzle_hash . proof_amount) . nft_launcher_proof_rest)) after_launcher launcher_puzzle_hash)
         (if nft_launcher_proof
             (coinid
-                (nft_lancher_id did_coin_id nft_launcher_proof_rest 1)
+                (nft_lancher_id did_coin_id nft_launcher_proof_rest 1 launcher_puzzle_hash)
                 proof_puzzle_hash
-                (if (all after_launcher (% proof_amount 2)) -1 proof_amount)
+                (if (all after_launcher (= proof_puzzle_hash launcher_puzzle_hash)) -1 proof_amount)
             )
             ; else
             did_coin_id
@@ -47,6 +47,7 @@
                 did_amount
             )
             nft_launcher_proof
+            SINGLETON_LAUNCHER_HASH
         )
     )
 

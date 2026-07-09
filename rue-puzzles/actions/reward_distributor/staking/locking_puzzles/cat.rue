@@ -41,7 +41,9 @@ export fn main(
         payments: [Payment {
             puzzle_hash: cat_destination_puzzle_hash,
             amount: cat_amount,
-            memos: Memos { value: [cat_destination_puzzle_hash] },
+            memos: Memos { value: [
+                tree_hash((Entry_Custody_Puzzle_Hash, MY_P2_PUZZLE_HASH))
+            ] },
         }],
     });
 

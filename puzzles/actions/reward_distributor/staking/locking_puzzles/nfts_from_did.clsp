@@ -20,10 +20,6 @@
     (include sha256tree.clib)
     (include curry.clib)
 
-    (defun notarized_payment (ph)
-        (list ph 1 (list ph))
-    )
-
     (defun nft_lancher_id (did_coin_id (@ nft_launcher_proof ((proof_puzzle_hash . proof_amount) . nft_launcher_proof_rest)) after_launcher launcher_puzzle_hash)
         (if nft_launcher_proof
             (coinid
@@ -116,12 +112,16 @@
                         (sha256tree 
                             (list
                                 (sha256tree (c shares_so_far (c Ephemeral_State my_id))) ; nonce
-                                (notarized_payment (curry_hashes NONCE_MOD_HASH
-                                    (sha256tree
-                                        (c Entry_Custody_Puzzle_Hash 1) ; 1 share per NFT
+                                (list
+                                    (curry_hashes NONCE_MOD_HASH
+                                        (sha256tree
+                                            (c Entry_Custody_Puzzle_Hash 1) ; 1 share per NFT
+                                        )
+                                        MY_P2_PUZZLE_HASH
                                     )
-                                    MY_P2_PUZZLE_HASH
-                                ))
+                                    1
+                                    (sha256tree (c Entry_Custody_Puzzle_Hash MY_P2_PUZZLE_HASH))
+                                )
                             )
                         )
                     )

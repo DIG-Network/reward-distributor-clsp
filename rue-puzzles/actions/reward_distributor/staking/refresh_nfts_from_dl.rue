@@ -53,14 +53,6 @@ inline fn singleton_full_puzzle_hash(
     ])
 }
 
-fn create_coin_1_with_hint(ph: Bytes32) -> Condition {
-    CreateCoin {
-        puzzle_hash: ph,
-        amount: 1,
-        memos: Memos { value: [ph] },
-    }
-}
-
 fn restake_nfts(
     {
         DL_SINGLETON_STRUCT,
@@ -102,7 +94,13 @@ fn restake_nfts(
         );
         let delegated_puzzle_hash = tree_hash(
             // 1 is the leading 'q . ' in the delegated puzzle
-            (1, [create_coin_1_with_hint(new_nft_puzle_hash)])
+            (1, [CreateCoin {
+                puzzle_hash: new_nft_puzle_hash,
+                amount: 1,
+                memos: Memos { value: [
+                    tree_hash((entry_slot.payout_puzzle_hash, MY_P2_PUZZLE_HASH))
+                ] },
+            }])
         );
 
         let nft_inner_puzzle_hash = curry_tree_hash(

@@ -64,10 +64,6 @@
     (include curry.clib)
     (include slots.clib)
 
-    (defun create_coin_1_with_hint (ph)
-        (list CREATE_COIN ph 1 (list ph))
-    )
-
     (defun restake_nfts (
         (@ curried_args_and_solution (
             (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
@@ -116,6 +112,8 @@
                                     (sha256tree (c entry_custody_puzzle_hash new_nft_shares))
                                     MY_P2_PUZZLE_HASH
                                 ) ; new puzzle hash
+                                1
+                                (sha256tree (c entry_custody_puzzle_hash MY_P2_PUZZLE_HASH))
                             )
                         )
                     )) ; message = delegated puzzle hash

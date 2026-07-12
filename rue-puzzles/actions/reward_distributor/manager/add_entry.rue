@@ -21,6 +21,8 @@ export fn main(
         manager_singleton_inner_puzzle_hash,
     ]);
 
+    assert(entry_shares > 0);
+
     (RewardDistributorStateTruth {
         Ephemeral_State: Truth.Ephemeral_State,
         State: RewardDistributorState {

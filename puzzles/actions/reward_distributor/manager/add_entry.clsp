@@ -35,7 +35,7 @@
             (c
                 total_reserves
                 (c
-                    (+ active_shares entry_shares)
+                    (+ active_shares (if (> entry_shares 0) entry_shares (x))))
                     (c Reward_Info Round_Time_Info)
                 )
             ) ; new state

@@ -61,6 +61,9 @@ export fn main(
             },
         },
     }, [
+        AssertSecondsAbsolute {
+            seconds: Truth.State.round_time_info.epoch_end,
+        },
         CreatePuzzleAnnouncement {
             message: "e" + tree_hash_atom(Truth.State.round_time_info.epoch_end as Bytes),
         },

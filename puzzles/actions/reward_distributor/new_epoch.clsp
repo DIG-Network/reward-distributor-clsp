@@ -71,6 +71,10 @@
             ) 
             (c
                 (list
+                    ASSERT_SECONDS_ABSOLUTE
+                    epoch_end
+                )
+                (list
                     CREATE_PUZZLE_ANNOUNCEMENT
                     (concat 'e'
                         (sha256 1 epoch_end) ; (sha256tree epoch_end)

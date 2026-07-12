@@ -223,7 +223,7 @@
                 )
                 (> payout_rounding_error -1)
                 (> PRECISION payout_rounding_error)
-                (not (> nfts_total_shares_delta existing_slot_shares)) ; can safely remove these shares
+                (not (> 0 (+ nfts_total_shares_delta existing_slot_shares))) ; can safely remove these shares
             )
                 (c
                     ; consume slot

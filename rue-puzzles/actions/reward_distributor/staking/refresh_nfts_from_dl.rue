@@ -206,6 +206,7 @@ fn process_slot_and_nft_data(
 
         let expected_val1 = (Truth.State.reward_info.cumulative_payout - existing_slot_cumulative_payout) * existing_slot_shares;
         let expected_val2 = entry_payout_amount * PRECISION + payout_rounding_error;
+        inline let new_slot_shares = existing_slot_shares + nfts_total_shares_delta;
 
         assert (
             expected_val1 == expected_val2
@@ -215,7 +216,7 @@ fn process_slot_and_nft_data(
             PRECISION > payout_rounding_error
         ) & (
             // can safely remove these shares
-            nfts_total_shares_delta <= existing_slot_shares
+            !(0 > new_slot_shares)
         );
 
         [
@@ -231,7 +232,7 @@ fn process_slot_and_nft_data(
                     counter: existing_slot_value.counter + 1,
                     payout_puzzle_hash: entry_custody_puzzle_hash,
                     initial_cumulative_payout: Truth.State.reward_info.cumulative_payout,
-                    shares: existing_slot_shares + nfts_total_shares_delta,
+                    shares: new_slot_shares,
                 }),
                 entry_custody_puzzle_hash,
             ),

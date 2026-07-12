@@ -216,7 +216,7 @@ fn process_slot_and_nft_data(
             PRECISION > payout_rounding_error
         ) & (
             // can safely remove these shares
-            !(0 > new_slot_shares)
+            new_slot_shares >= 0
         );
 
         [

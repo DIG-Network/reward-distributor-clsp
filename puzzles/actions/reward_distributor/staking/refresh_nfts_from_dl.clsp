@@ -107,7 +107,7 @@
                     (sha256tree (c ; this is the leading 'q . ' in the delegated puzzle
                         1 
                         (list
-                            (create_coin_1_with_hint
+                            (list CREATE_COIN
                                 (curry_hashes NONCE_MOD_HASH
                                     (sha256tree (c entry_custody_puzzle_hash new_nft_shares))
                                     MY_P2_PUZZLE_HASH

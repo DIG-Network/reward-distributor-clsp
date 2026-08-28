@@ -5,11 +5,13 @@
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
 import super::locking_puzzles::cat::{CatMaker, CatMakerSolution};
+import super::super::super::super::reward_distributor::*;
+import super::super::super::super::slot::*;
 import super::unstake::UnlockPuzzleOutput;
 
 export fn main(
     CAT_MAKER: CatMaker,
-    NONCE_MOD_HASH: Bytes32,
+    DEPOSIT_SLOT_1ST_CURRY_HASH: Bytes32,
     MY_P2_PUZZLE_HASH: Bytes32,
     Ephemeral_State: Int,
     Entry_Custody_Puzzle_Hash: Bytes32,
@@ -18,7 +20,11 @@ export fn main(
     cat_shares: Int,
     ...cat_maker_solution: CatMakerSolution,
 ) -> UnlockPuzzleOutput {
-    assert Ephemeral_State == 0;
+    assert (
+        Ephemeral_State == 0
+    ) & {
+        cat_shares > 0
+    };
 
     let delegated_puzzle_hash = tree_hash(
         (1, [ // leading 'q . ' in the delegated puzzle
@@ -33,15 +39,8 @@ export fn main(
         ])
     );
 
-    let cat_inner_puzzle_hash = curry_tree_hash(
-        NONCE_MOD_HASH,
-        [
-            tree_hash((Entry_Custody_Puzzle_Hash, cat_shares)),
-            MY_P2_PUZZLE_HASH
-        ]
-    );
     let cat_full_puzzle_hash = CAT_MAKER(
-        cat_inner_puzzle_hash,
+        MY_P2_PUZZLE_HASH,
         ...cat_maker_solution
     );
     let locked_cat_id = coinid(
@@ -65,6 +64,15 @@ export fn main(
                 message: "u" + cat_parent_id,
                 sender: [Entry_Custody_Puzzle_Hash],
             },
+            // spend deposit slot
+            spend_slot(
+                DEPOSIT_SLOT_1ST_CURRY_HASH,
+                tree_hash(DepositSlotValue {
+                    payout_puzzle_hash: Entry_Custody_Puzzle_Hash,
+                    shares: cat_shares,
+                    launcher_id_or_cat_amount: cat_amount,
+                }),
+            ),
         ],
     }
 }

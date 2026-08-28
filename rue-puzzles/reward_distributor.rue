@@ -53,6 +53,12 @@ export struct EntrySlotValue {
     ...shares: Int,
 }
 
+export struct DepositSlotValue {
+    payout_puzzle_hash: Bytes32,
+    shares: Int,
+    ...launcher_id_or_cat_amount: Bytes32 | Int,
+}
+
 export fn slot_value_hash(
     counter: Int,
     first_val: Atom,

@@ -9,7 +9,7 @@
     NFT_STATE_LAYER_MOD_HASH
     NFT_OWNERSHIP_LAYER_MOD_HASH
     OFFER_MOD_HASH
-    NONCE_MOD_HASH
+    DEPOSIT_SLOT_1ST_CURRY_HASH
     MY_P2_PUZZLE_HASH
     Ephemeral_State
     Entry_Custody_Puzzle_Hash
@@ -24,6 +24,7 @@
     (include merkle_utils.clib)
     (include sha256tree.clib)
     (include curry.clib)
+    (include slots.clib)
 
     (defun add_announcement_assert_and_create_security_condition (ann conditions)
         (c
@@ -41,7 +42,7 @@
                 NFT_STATE_LAYER_MOD_HASH
                 NFT_OWNERSHIP_LAYER_MOD_HASH
                 OFFER_MOD_HASH
-                NONCE_MOD_HASH
+                DEPOSIT_SLOT_1ST_CURRY_HASH
                 MY_P2_PUZZLE_HASH
                 Ephemeral_State
                 Entry_Custody_Puzzle_Hash
@@ -75,50 +76,55 @@
                 curried_args_and_solution
                 nft_infos_rest
                 (+ shares_so_far nft_shares)
-                (add_announcement_assert_and_create_security_condition
-                    (sha256
-                        (curry_hashes SINGLETON_MOD_HASH
-                            (sha256tree
-                                (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
-                            )
-                            (curry_hashes NFT_STATE_LAYER_MOD_HASH
-                                (sha256 1 NFT_STATE_LAYER_MOD_HASH)
-                                nft_metadata_hash
-                                nft_metadata_updater_hash_hash  
-                                (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
-                                    (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
-                                    (sha256 1 nft_owner)
-                                    nft_transfer_porgram_hash
-                                    OFFER_MOD_HASH
+                (c
+                    (create_slot_with_hint
+                        DEPOSIT_SLOT_1ST_CURRY_HASH
+                        (sha256tree (c Entry_Custody_Puzzle_Hash (c nft_shares nft_launcher_id)))
+                        Entry_Custody_Puzzle_Hash
+                    )
+                    (add_announcement_assert_and_create_security_condition
+                        (sha256
+                            (curry_hashes SINGLETON_MOD_HASH
+                                (sha256tree
+                                    (c SINGLETON_MOD_HASH (c nft_launcher_id SINGLETON_LAUNCHER_HASH))
                                 )
-                            )
-                        ) ; NFT puzzle hash
-                        (sha256tree 
-                            (list
-                                (sha256tree (c shares_so_far (c Ephemeral_State my_id))) ; nonce
-                                (list
-                                    (curry_hashes NONCE_MOD_HASH
-                                        (sha256tree
-                                            (c Entry_Custody_Puzzle_Hash nft_shares)
-                                        )
-                                        MY_P2_PUZZLE_HASH
+                                (curry_hashes NFT_STATE_LAYER_MOD_HASH
+                                    (sha256 1 NFT_STATE_LAYER_MOD_HASH)
+                                    nft_metadata_hash
+                                    nft_metadata_updater_hash_hash  
+                                    (curry_hashes NFT_OWNERSHIP_LAYER_MOD_HASH
+                                        (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
+                                        (sha256 1 nft_owner)
+                                        nft_transfer_porgram_hash
+                                        OFFER_MOD_HASH
                                     )
-                                    1
-                                    (sha256tree (c Entry_Custody_Puzzle_Hash MY_P2_PUZZLE_HASH))
+                                )
+                            ) ; NFT puzzle hash
+                            (sha256tree 
+                                (list
+                                    (sha256tree (c shares_so_far (c Ephemeral_State my_id))) ; nonce
+                                    (list
+                                        MY_P2_PUZZLE_HASH
+                                        1
+                                        (sha256tree (c Entry_Custody_Puzzle_Hash MY_P2_PUZZLE_HASH))
+                                    )
                                 )
                             )
                         )
-                    )
-                    (if (= 
-                        dl_root_hash
-                        (simplify_merkle_proof
-                            (sha256tree (c nft_launcher_id nft_shares))
-                            nft_inclusion_proof
+                        (if (all 
+                                (= 
+                                    dl_root_hash
+                                    (simplify_merkle_proof
+                                        (sha256tree (c nft_launcher_id nft_shares))
+                                        nft_inclusion_proof
+                                    )
+                                )
+                                (> nft_shares 0)
                         )
-                    )
-                        conditions_so_far
-                        ; else - NFT not in DL store or proof incorrect
-                        (x)
+                            conditions_so_far
+                            ; else - NFT not in DL store or proof incorrect
+                            (x)
+                        )
                     )
                 )
             )

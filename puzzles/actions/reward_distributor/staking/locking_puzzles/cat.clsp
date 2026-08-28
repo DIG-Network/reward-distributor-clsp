@@ -7,8 +7,8 @@
 (mod (
     CAT_MAKER
     OFFER_MOD_HASH
-    NONCE_MOD_HASH
     MY_P2_PUZZLE_HASH
+    DEPOSIT_SLOT_1ST_CURRY_HASH
     Ephemeral_State
     Entry_Custody_Puzzle_Hash
     my_id
@@ -18,6 +18,7 @@
     (include condition_codes.clib)
     (include sha256tree.clib)
     (include curry.clib)
+    (include slots.clib)
 
     (defun add_announcement_assert_and_create_security_condition (ann conditions)
         (c
@@ -30,7 +31,7 @@
     )
 
     (c
-        cat_amount ; new_active_shares
+        (if (> cat_amount 0) cat_amount (x)) ; new_active_shares
         (add_announcement_assert_and_create_security_condition
             (sha256
                 (a
@@ -44,12 +45,7 @@
                     (list
                         (sha256tree (c Ephemeral_State my_id)) ; nonce
                         (list
-                            (curry_hashes NONCE_MOD_HASH
-                                (sha256tree
-                                    (c Entry_Custody_Puzzle_Hash cat_amount)
-                                )
-                                MY_P2_PUZZLE_HASH
-                            )
+                            MY_P2_PUZZLE_HASH
                             cat_amount
                             (sha256tree (c Entry_Custody_Puzzle_Hash MY_P2_PUZZLE_HASH))
                         )
@@ -58,6 +54,11 @@
             )
             (list
                 (list ASSERT_MY_COIN_ID my_id)
+                (create_slot_with_hint
+                    ENTRY_SLOT_1ST_CURRY_HASH
+                    (sha256tree (c Entry_Custody_Puzzle_Hash (c cat_amount cat_amount)))
+                    Entry_Custody_Puzzle_Hash
+                )
             )
         ) ; locking conditions
     )

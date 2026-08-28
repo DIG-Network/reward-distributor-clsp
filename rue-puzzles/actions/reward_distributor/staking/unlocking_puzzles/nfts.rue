@@ -4,6 +4,8 @@
 // This is an unlocking puzzle - output is (unlocked_shares . output_conditions).
 // Ephemeral_State & Entry_Custody_Puzzle_Hash are Truths verified and passed by 'stake.clsp'.
 
+import super::super::super::super::reward_distributor::*;
+import super::super::super::super::slot::*;
 import super::unstake::UnlockPuzzleOutput;
 
 struct NftInfo {
@@ -21,7 +23,7 @@ struct NftsUnlockingPuzzleArgs {
     SINGLETON_LAUNCHER_HASH: Bytes32,
     NFT_STATE_LAYER_MOD_HASH: Bytes32,
     NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
-    NONCE_MOD_HASH: Bytes32,
+    DEPOSIT_SLOT_1ST_CURRY_HASH: Bytes32,
     MY_P2_PUZZLE_HASH: Bytes32,
     Ephemeral_State: Int,
     Entry_Custody_Puzzle_Hash: Bytes32,
@@ -34,7 +36,7 @@ fn remove_nfts(
         SINGLETON_LAUNCHER_HASH,
         NFT_STATE_LAYER_MOD_HASH,
         NFT_OWNERSHIP_LAYER_MOD_HASH,
-        NONCE_MOD_HASH,
+        DEPOSIT_SLOT_1ST_CURRY_HASH,
         MY_P2_PUZZLE_HASH,
         Entry_Custody_Puzzle_Hash,
         ...args,
@@ -85,10 +87,7 @@ fn remove_nfts(
                         tree_hash_atom(NFT_OWNERSHIP_LAYER_MOD_HASH),
                         tree_hash_atom(nft_owner),
                         nft_transfer_porgram_hash,
-                        curry_tree_hash(NONCE_MOD_HASH, [
-                            tree_hash((Entry_Custody_Puzzle_Hash, nft_shares)),
-                            MY_P2_PUZZLE_HASH,
-                        ]),
+                        MY_P2_PUZZLE_HASH
                     ]
                 ),
             ]
@@ -118,8 +117,19 @@ fn remove_nfts(
                 message: "u" + nft_launcher_id,
                 sender: [Entry_Custody_Puzzle_Hash],
             },
+            // spend deposit slot
+            spend_slot(
+                DEPOSIT_SLOT_1ST_CURRY_HASH,
+                tree_hash(DepositSlotValue {
+                    payout_puzzle_hash: Entry_Custody_Puzzle_Hash,
+                    shares: nft_shares,
+                    launcher_id_or_cat_amount: nft_launcher_id,
+                }),
+            ),
             ...conditions_so_far,
         ];
+
+        assert nft_shares >= 0;
 
         remove_nfts(
             args,

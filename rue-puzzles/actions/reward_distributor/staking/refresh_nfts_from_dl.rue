@@ -7,8 +7,8 @@
 //   'nfts_from_dl.clsp' and the unlocking puzzle is 'nfts.clsp'.
 
 import super::super::super::reward_distributor::*;
-import super::super::super::slot::*;
 import std::singleton::SingletonStruct;
+import super::super::super::slot::*;
 
 struct DlMetadataPack {
     dl_metadata_rest_hash_or_null: Bytes32 | nil,
@@ -58,7 +58,7 @@ fn restake_nfts(
         DL_SINGLETON_STRUCT,
         NFT_STATE_LAYER_MOD_HASH,
         NFT_OWNERSHIP_LAYER_MOD_HASH,
-        NONCE_MOD_HASH,
+        DEPOSIT_SLOT_1ST_CURRY_HASH,
         MY_P2_PUZZLE_HASH,
         dl_root_hash,
         ...args,
@@ -85,17 +85,10 @@ fn restake_nfts(
             nft_inclusion_proof,
         } = nft_data.first;
 
-        let new_nft_puzle_hash = curry_tree_hash(
-            NONCE_MOD_HASH,
-            [
-                tree_hash((entry_slot.payout_puzzle_hash, new_nft_shares)),
-                MY_P2_PUZZLE_HASH
-            ]
-        );
         let delegated_puzzle_hash = tree_hash(
             // 1 is the leading 'q . ' in the delegated puzzle
             (1, [CreateCoin {
-                puzzle_hash: new_nft_puzle_hash,
+                puzzle_hash: MY_P2_PUZZLE_HASH,
                 amount: 1,
                 memos: Memos { value: [
                     tree_hash((entry_slot.payout_puzzle_hash, MY_P2_PUZZLE_HASH))
@@ -115,10 +108,7 @@ fn restake_nfts(
                         tree_hash_atom(NFT_OWNERSHIP_LAYER_MOD_HASH),
                         tree_hash_atom(nft_owner),
                         nft_transfer_porgram_hash,
-                        curry_tree_hash(NONCE_MOD_HASH, [
-                            tree_hash((entry_slot.payout_puzzle_hash, (new_nft_shares - nft_shares_delta))),
-                            MY_P2_PUZZLE_HASH
-                        ])
+                        MY_P2_PUZZLE_HASH
                     ]
                 )
             ]
@@ -141,6 +131,10 @@ fn restake_nfts(
                 tree_hash((nft_launcher_id, new_nft_shares)),
                 nft_inclusion_proof,
             )
+        ) & (
+            new_nft_shares >= 0
+        ) & (
+            new_nft_shares - nft_shares_delta >= 0
         );
 
         [
@@ -154,6 +148,23 @@ fn restake_nfts(
             CreatePuzzleAnnouncement {
                 message: "r" + nft_launcher_id,
             },
+            spend_slot(
+                DEPOSIT_SLOT_1ST_CURRY_HASH,
+                tree_hash(DepositSlotValue {
+                    payout_puzzle_hash: entry_slot.payout_puzzle_hash,
+                    shares: new_nft_shares - nft_shares_delta,
+                    launcher_id_or_cat_amount: nft_launcher_id,
+                }),
+            ),
+            create_slot_with_hint(
+                DEPOSIT_SLOT_1ST_CURRY_HASH,
+                tree_hash(DepositSlotValue {
+                    payout_puzzle_hash: entry_slot.payout_puzzle_hash,
+                    shares: new_nft_shares,
+                    launcher_id_or_cat_amount: nft_launcher_id,
+                }),
+                entry_slot.payout_puzzle_hash,
+            ),
             ...restake_nfts(
                 args,
                 entry_slot,
@@ -264,7 +275,7 @@ struct RestakeNftsArgs {
     DL_SINGLETON_STRUCT: SingletonStruct,
     NFT_STATE_LAYER_MOD_HASH: Bytes32,
     NFT_OWNERSHIP_LAYER_MOD_HASH: Bytes32,
-    NONCE_MOD_HASH: Bytes32,
+    DEPOSIT_SLOT_1ST_CURRY_HASH: Bytes32,
     MY_P2_PUZZLE_HASH: Bytes32,
     ENTRY_SLOT_1ST_CURRY_HASH: Bytes32, // after 1st curry
     MAX_SECONDS_OFFSET: Int, // at most this amount of seconds can pass since last update

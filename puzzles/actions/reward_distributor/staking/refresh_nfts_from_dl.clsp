@@ -10,7 +10,7 @@
     (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
     NFT_STATE_LAYER_MOD_HASH
     NFT_OWNERSHIP_LAYER_MOD_HASH
-    NONCE_MOD_HASH
+    DEPOSIT_SLOT_1ST_CURRY_HASH
     MY_P2_PUZZLE_HASH
     ENTRY_SLOT_1ST_CURRY_HASH ; after 1st curry
     MAX_SECONDS_OFFSET ; at most this amount of seconds can pass since last update
@@ -69,7 +69,7 @@
             (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
             NFT_STATE_LAYER_MOD_HASH
             NFT_OWNERSHIP_LAYER_MOD_HASH
-            NONCE_MOD_HASH
+            DEPOSIT_SLOT_1ST_CURRY_HASH
             MY_P2_PUZZLE_HASH
             ENTRY_SLOT_1ST_CURRY_HASH
             MAX_SECONDS_OFFSET
@@ -108,10 +108,7 @@
                         1 
                         (list
                             (list CREATE_COIN
-                                (curry_hashes NONCE_MOD_HASH
-                                    (sha256tree (c entry_custody_puzzle_hash new_nft_shares))
-                                    MY_P2_PUZZLE_HASH
-                                ) ; new puzzle hash
+                                MY_P2_PUZZLE_HASH ; new puzzle hash
                                 1
                                 (sha256tree (c entry_custody_puzzle_hash MY_P2_PUZZLE_HASH))
                             )
@@ -131,10 +128,7 @@
                                     (sha256 1 NFT_OWNERSHIP_LAYER_MOD_HASH)
                                     (sha256 1 nft_owner)
                                     nft_transfer_porgram_hash
-                                    (curry_hashes NONCE_MOD_HASH
-                                        (sha256tree (c entry_custody_puzzle_hash (- new_nft_shares nft_shares_delta)))
-                                        MY_P2_PUZZLE_HASH
-                                    )
+                                    MY_P2_PUZZLE_HASH
                                 )
                             )
                         ) ; NFT puzzle hash
@@ -143,25 +137,40 @@
                 )
                 (c
                     (list CREATE_PUZZLE_ANNOUNCEMENT (concat 'r' nft_launcher_id))
-                    (if (all
-                        (= 
-                            dl_root_hash
-                            (simplify_merkle_proof
-                                (sha256tree (c nft_launcher_id new_nft_shares))
-                                nft_inclusion_proof
+                    (c
+                        (spend_slot
+                            DEPOSIT_SLOT_1ST_CURRY_HASH
+                            (sha256tree (c entry_custody_puzzle_hash (c (- new_nft_shares nft_shares_delta) nft_launcher_id)))
+                        )
+                        (c
+                            (create_slot_with_hint
+                                DEPOSIT_SLOT_1ST_CURRY_HASH
+                                (sha256tree (c entry_custody_puzzle_hash (c new_nft_shares nft_launcher_id)))
+                                entry_custody_puzzle_hash
                             )
+                            (if (all
+                                    (= 
+                                        dl_root_hash
+                                        (simplify_merkle_proof
+                                            (sha256tree (c nft_launcher_id new_nft_shares))
+                                            nft_inclusion_proof
+                                        )
+                                    )
+                                    nft_shares_delta ; should not be 0
+                                    (> new_nft_shares 0)
+                                    (not (> 0 (- new_nft_shares nft_shares_delta)))
+                                )
+                                    (restake_nfts
+                                        curried_args_and_solution
+                                        existing_slot_value
+                                        nft_data_rest
+                                        (- remaining_shares_delta nft_shares_delta)
+                                        conditions_so_far
+                                    )
+                                    ; else
+                                    (x)
+                                )
                         )
-                        nft_shares_delta ; should not be 0
-                    )
-                        (restake_nfts
-                            curried_args_and_solution
-                            existing_slot_value
-                            nft_data_rest
-                            (- remaining_shares_delta nft_shares_delta)
-                            conditions_so_far
-                        )
-                        ; else
-                        (x)
                     )
                 )
             )
@@ -179,7 +188,7 @@
             (@ DL_SINGLETON_STRUCT (SINGLETON_MOD_HASH DL_LAUNCHER_ID . SINGLETON_LAUNCHER_HASH))
             NFT_STATE_LAYER_MOD_HASH
             NFT_OWNERSHIP_LAYER_MOD_HASH
-            NONCE_MOD_HASH
+            DEPOSIT_SLOT_1ST_CURRY_HASH
             MY_P2_PUZZLE_HASH
             ENTRY_SLOT_1ST_CURRY_HASH
             MAX_SECONDS_OFFSET

@@ -6,7 +6,7 @@
 
 (mod (
     CAT_MAKER
-    NONCE_MOD_HASH
+    DEPOSIT_SLOT_1ST_CURRY_HASH
     MY_P2_PUZZLE_HASH
     Ephemeral_State
     Entry_Custody_Puzzle_Hash
@@ -18,10 +18,9 @@
     (include condition_codes.clib)
     (include sha256tree.clib)
     (include curry.clib)
+    (include slots.clib)
 
-    (if Ephemeral_State
-        (x)
-        ; else
+    (if (all (not Ephemeral_State) (> cat_shares 0))
         (c
             cat_shares ; unlocked_shares
             (list
@@ -45,10 +44,7 @@
                         (a
                             CAT_MAKER
                             (c
-                                (curry_hashes NONCE_MOD_HASH
-                                    (sha256tree (c Entry_Custody_Puzzle_Hash cat_shares))
-                                    MY_P2_PUZZLE_HASH
-                                ) ; Inner_Puzzle_Hash
+                                MY_P2_PUZZLE_HASH ; Inner_Puzzle_Hash
                                 cat_maker_solution_rest
                             ) ; CAT maker solution
                         ) ; full CAT puzzle hash
@@ -60,7 +56,13 @@
                     (concat 'u' cat_parent_id) ; message
                     Entry_Custody_Puzzle_Hash ; sender
                 )
+                (spend_slot
+                    DEPOSIT_SLOT_1ST_CURRY_HASH
+                    (sha256tree (c Entry_Custody_Puzzle_Hash (c cat_shares cat_amount)))
+                )
             ) ; output_conditions
         )
+        ; else
+        (x)
     )
 )
